@@ -302,6 +302,19 @@ export class TeamplaneService {
 
   // -------------------------------------------------------------------- task
 
+  private assertRepoAllowed(repoPath: string): void {
+    const roots = this.options.allowedRepoRoots ?? (this.options.repoPath ? [resolve(this.options.repoPath)] : [])
+    if (roots.length > 0 && !roots.some((root) => repoPath === root || repoPath.startsWith(`${root}${sep}`))) {
+      fail('repo_not_allowed', `Repository ${repoPath} is outside the allowed roots.`, 403, { allowed: roots })
+    }
+  }
+
+  private assertBranch(branch: string): void {
+    if (!/^[A-Za-z0-9._/-]+$/.test(branch) || branch.includes('..')) {
+      fail('invalid_branch', `Invalid branch: ${branch}`, 422)
+    }
+  }
+
   createTask(
     actor: AuthenticatedPrincipal,
     input: { title: string; repoPath?: string; baseBranch?: string; assignee?: string | null; verify?: string[] },
@@ -310,14 +323,9 @@ export class TeamplaneService {
     if (!input.title || input.title.trim() === '') fail('invalid_title', 'title is required', 422)
     const repoPath = resolve(input.repoPath ?? this.options.repoPath ?? '')
     if (!repoPath) fail('repo_required', 'A repository path is required (--repo).', 422)
-    const roots = this.options.allowedRepoRoots ?? (this.options.repoPath ? [resolve(this.options.repoPath)] : [])
-    if (roots.length > 0 && !roots.some((root) => repoPath === root || repoPath.startsWith(`${root}${sep}`))) {
-      fail('repo_not_allowed', `Repository ${repoPath} is outside the allowed roots.`, 403, { allowed: roots })
-    }
+    this.assertRepoAllowed(repoPath)
     const baseBranch = input.baseBranch ?? 'main'
-    if (!/^[A-Za-z0-9._/-]+$/.test(baseBranch) || baseBranch.includes('..')) {
-      fail('invalid_branch', `Invalid base branch: ${baseBranch}`, 422)
-    }
+    this.assertBranch(baseBranch)
     const verify = this.normalizeVerify(input.verify ?? [])
     const taskId = id('tsk')
     const task: Task = {
@@ -362,6 +370,8 @@ export class TeamplaneService {
     const task = this.state.tasks.get(taskId)
     if (!task) fail('task_not_found', `No task ${taskId}`, 404)
     this.authorizeOrThrow(actor, 'task.start', `task:${taskId}`)
+    this.assertRepoAllowed(resolve(task.repoPath))
+    this.assertBranch(task.baseBranch)
     if (!existsSync(task.repoPath)) fail('repo_not_found', `Repository ${task.repoPath} does not exist.`, 422)
 
     const worktree = join(dirname(task.repoPath), '.teamplane-worktrees', task.id)

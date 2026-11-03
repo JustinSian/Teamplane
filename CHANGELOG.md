@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1 — 2026-11-03
+
+### Fixed
+
+- Upgrading from 0.3.x now migrates `memory.written` text from the event log into the vault; search still returns the content after restart.
+- `task.start` re-validates `repoPath` and `baseBranch`, so a task created before the 0.4 root restriction cannot be used to escape it.
+- Tests 33 → 34 (legacy memory migration).
+
 ## 0.4.0 — 2026-11-03
 
 The storage and isolation follow-up to 0.3.0.

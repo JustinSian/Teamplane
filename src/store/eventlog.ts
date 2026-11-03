@@ -326,8 +326,10 @@ export function applyEvent(state: State, event: EventRecord): void {
       break
     }
     case 'memory.written': {
-      const payload = data as Omit<MemoryFragment, 'text'> & { textHash?: string }
-      state.memory.set(payload.id, { ...payload, text: '' })
+      // 0.4+ events carry no text; keep text if replaying a 0.3 event so the
+      // vault can migrate it on startup.
+      const payload = data as Omit<MemoryFragment, 'text'> & { text?: string; textHash?: string }
+      state.memory.set(payload.id, { ...payload, text: payload.text ?? '' })
       break
     }
     case 'approval.requested': {

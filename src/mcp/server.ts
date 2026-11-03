@@ -3,7 +3,7 @@ import type { McpApi } from './tools.js'
 import { findTool, TOOLS } from './tools.js'
 
 export const PROTOCOL_VERSION = '2026-07-28'
-export const SERVER_INFO = { name: 'teamplane', version: '0.4.0' }
+export const SERVER_INFO = { name: 'teamplane', version: '0.4.1' }
 
 export interface McpBackendOptions {
   baseUrl: string

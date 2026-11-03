@@ -31,11 +31,13 @@ export class MemoryVault {
     }
   }
 
-  /** Replace metadata-only projections with their content, dropping orphans. */
+  /** Replace metadata-only projections with their content; migrate legacy text. */
   hydrate(state: State): void {
     for (const id of [...state.memory.keys()]) {
+      const existing = state.memory.get(id)
       const fragment = this.load(id)
       if (fragment) state.memory.set(id, fragment)
+      else if (existing?.text) this.save(existing)
       else state.memory.delete(id)
     }
   }
