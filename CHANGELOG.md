@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.6 — 2026-11-03
+
+### Added
+
+- **Segmented event log**: the active `events.jsonl` rotates into `archive/events-<firstSeq>.jsonl` every 10,000 events (or `TEAMPLANE_SEGMENT_EVENTS`). The hash chain continues across segments; replay, `audit verify` and `events()` read segments in order.
+- Rotation/tamper test: 10 events across 3 segments, clean replay, and a mutated archived byte rejected.
+
+### Changed
+
+- Tests 28 → 29; version 0.2.6.
+
 ## 0.2.5 — 2026-11-03
 
 ### Added

@@ -1,6 +1,6 @@
 # Status
 
-**Version:** 0.2.5 · **Date:** 2026-11-03 · **Maturity:** research preview
+**Version:** 0.2.6 · **Date:** 2026-11-03 · **Maturity:** research preview
 
 Teamplane is a working reference implementation of a multi-principal control plane for agent teams. It is not a finished product. This page is the honest matrix: what is shipped, what is partial, what is not built, and what has actually been measured.
 
@@ -27,7 +27,7 @@ Teamplane is a working reference implementation of a multi-principal control pla
 | GitHub App / PR integration | **Not built** | local or shared bare repositories only |
 | Multi-node / HA | **Not built** | single process, single writer |
 | Memory review workflow | **Not built** | anyone with `memory.write` can publish; conflicts are events, not approvals |
-| Log rotation | **Not built** | O(n) replay at startup; snapshots mitigate |
+| Log rotation | **Shipped** | segments of 10,000 events under `.teamplane/archive/`, configurable with `TEAMPLANE_SEGMENT_EVENTS`; replay and audit span segments |
 | Rate limiting | **Shipped** | per-principal token bucket, 120 burst / 2 per second by default, `Retry-After` |
 | TLS | **Not built** | bind to loopback or terminate TLS in front |
 | SSO / identity federation | **Not built** | external identities are provenance strings |
@@ -36,7 +36,7 @@ Teamplane is a working reference implementation of a multi-principal control pla
 
 | Claim | Evidence |
 |---|---|
-| Coordination invariants hold | `npm test` — **28/28** passing |
+| Coordination invariants hold | `npm test` — **29/29** passing |
 | End-to-end behaviour | `npm run demo` — **16/16** steps, 2.7 s, report in `demo/out/` |
 | MCP works on both transports | `npm run mcp:smoke` — 10 tools, stdio + HTTP |
 | Package is installable | `npm pack` + install into a clean prefix; CLI runs |

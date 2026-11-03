@@ -158,9 +158,12 @@ The gate returns a result object with `ok`, never a bare error, so a caller can 
   keys/root.pub        public key
   keys/root.kid        key id
   policy.json          editable copy; applied through the API
-  events.jsonl         source of truth
+  events.jsonl         active segment
+  archive/             rotated segments, events-<firstSeq>.jsonl
   snapshot.json        derived cache (safe to delete)
 ```
+
+The active segment rotates every 10,000 events (or `TEAMPLANE_SEGMENT_EVENTS`); the hash chain continues across segments, and replay/audit read archive + active in sequence order.
 
 Startup: load snapshot (if any), replay events after its sequence, verify every hash. A corrupt log refuses to start rather than serving a half-trusted state. There is one writer; the server holds an in-process mutex by construction (Node's single thread plus synchronous appends).
 

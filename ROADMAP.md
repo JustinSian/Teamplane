@@ -8,7 +8,7 @@ From "working reference implementation" to "team product people star and use". E
 - Curated memory with ACLs, provenance, secret rejection, conflict events.
 - One-shot approvals, merge gate, hash-chained event log.
 - CLI, HTTP + SSE, console, MCP (stdio + HTTP), DSH guard (experimental).
-- Playground seed, executable demo, 28 tests, GitHub Action, Pages site.
+- Playground seed, executable demo, 29 tests, GitHub Action, Pages site.
 
 **Exit:** `npm test`, `npm run demo`, `npm run mcp:smoke` pass; a stranger can run the playground in under three minutes.
 
@@ -20,7 +20,8 @@ From "working reference implementation" to "team product people star and use". E
 - [ ] **Dispatch (sessions)**: stream the runtime's session id and events back into the task timeline.
 - [ ] **Guard in the loop**: install `dsh-teamplane-guard` in a real profile; record an intercepted write as an event; document the exact steps.
 - [ ] **Console completeness**: issue mandate, edit policy, start task, resolve approvals with a comment; keyboard-free onboarding.
-- [ ] **Operability**: log rotation and segmentation, `/healthz` detail page, TLS reverse-proxy guide.
+- [x] **Log rotation**: segmented event log with cross-segment replay and audit.
+- [ ] **Operability**: `/healthz` detail page, TLS reverse-proxy guide.
 - [x] **Per-principal rate limits**: token bucket with `Retry-After`.
 - [x] **SSE resume** with `Last-Event-ID`; `since` query for custom clients.
 - [ ] **npm publish** + `npx teamplane playground`; signed release artifacts.

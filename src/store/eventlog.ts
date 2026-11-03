@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events'
-import { appendFileSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type {
   Approval,
@@ -42,21 +42,30 @@ export function emptyState(): State {
 export class EventLog extends EventEmitter {
   readonly dir: string
   readonly file: string
+  readonly archiveDir: string
   readonly snapshotFile: string
   state: State
   private snapshotWriteInFlight = false
+  private segmentFirstSeq = 1
+  private segmentCount = 0
+  private readonly maxSegmentEvents: number
 
-  private constructor(dir: string) {
+  private constructor(dir: string, maxSegmentEvents: number) {
     super()
     this.dir = dir
     this.file = join(dir, 'events.jsonl')
+    this.archiveDir = join(dir, 'archive')
     this.snapshotFile = join(dir, 'snapshot.json')
+    this.maxSegmentEvents = Math.max(1, maxSegmentEvents)
     this.state = emptyState()
   }
 
-  static open(dir: string): EventLog {
+  static open(dir: string, options: { maxSegmentEvents?: number } = {}): EventLog {
     mkdirSync(dir, { recursive: true })
-    const log = new EventLog(dir)
+    mkdirSync(join(dir, 'archive'), { recursive: true })
+    const configured = options.maxSegmentEvents ?? Number(process.env.TEAMPLANE_SEGMENT_EVENTS ?? '')
+    const maxSegmentEvents = Number.isFinite(configured) && configured > 0 ? configured : 10_000
+    const log = new EventLog(dir, maxSegmentEvents)
     log.loadSnapshot()
     log.replay()
     return log
@@ -75,19 +84,29 @@ export class EventLog extends EventEmitter {
     }
   }
 
-  private replay(): void {
-    if (!existsSync(this.file)) return
-    const text = readFileSync(this.file, 'utf8')
-    if (text.length === 0) return
+  private segments(): string[] {
+    if (!existsSync(this.archiveDir)) return []
+    return readdirSync(this.archiveDir)
+      .filter((name) => /^events-\d+\.jsonl$/.test(name))
+      .sort((a, b) => Number(a.match(/\d+/)![0]) - Number(b.match(/\d+/)![0]))
+      .map((name) => join(this.archiveDir, name))
+  }
+
+  private replayFile(path: string): number {
+    if (!existsSync(path)) return 0
+    const text = readFileSync(path, 'utf8')
+    if (text.length === 0) return 0
     let expectedSeq = this.state.lastSeq + 1
     let previous = this.state.lastHash
-    for (const line of text.split('\n')) {
+    let lines = 0
+    for (const line of text.split(String.fromCharCode(10))) {
       if (line.trim() === '') continue
+      lines += 1
       let event: EventRecord
       try {
         event = parseJson<EventRecord>(line, 'event log')
       } catch {
-        fail('corrupt_event_log', `Event log at ${this.file} contains a malformed line.`, 500)
+        fail('corrupt_event_log', `Event log at ${path} contains a malformed line.`, 500)
       }
       if (event.seq <= this.state.lastSeq) continue
       const check = verifyEvent(event, previous, expectedSeq)
@@ -96,15 +115,48 @@ export class EventLog extends EventEmitter {
       previous = event.hash
       expectedSeq += 1
     }
+    return lines
+  }
+
+  private firstSeqOf(path: string): number | null {
+    if (!existsSync(path)) return null
+    for (const line of readFileSync(path, 'utf8').split(String.fromCharCode(10))) {
+      if (line.trim() === '') continue
+      try {
+        return Number(parseJson<EventRecord>(line, 'event log').seq)
+      } catch {
+        return null
+      }
+    }
+    return null
+  }
+
+  private replay(): void {
+    for (const path of this.segments()) this.replayFile(path)
+    this.segmentCount = this.replayFile(this.file)
+    this.segmentFirstSeq = this.firstSeqOf(this.file) ?? this.state.lastSeq + 1
+  }
+
+  private rotate(): void {
+    if (!existsSync(this.file)) return
+    const text = readFileSync(this.file, 'utf8')
+    if (text.trim() === '') return
+    mkdirSync(this.archiveDir, { recursive: true })
+    const target = join(this.archiveDir, `events-${String(this.segmentFirstSeq).padStart(12, '0')}.jsonl`)
+    renameSync(this.file, target)
+    this.segmentFirstSeq = this.state.lastSeq + 1
+    this.segmentCount = 0
   }
 
   append(type: EventType, actor: string, data: JsonValue): EventRecord {
+    if (this.segmentCount >= this.maxSegmentEvents) this.rotate()
     const seq = this.state.lastSeq + 1
     const at = nowIso()
     const core = { seq, id: id('evt'), at, type, actor, data, prevHash: this.state.lastHash }
     const hash = hashObject(core)
     const event: EventRecord = { ...core, hash }
     appendFileSync(this.file, `${canonicalJson(event)}\n`, { mode: 0o600 })
+    this.segmentCount += 1
     applyEvent(this.state, event)
     this.emit('event', event)
     if (seq % SNAPSHOT_EVERY === 0) this.writeSnapshot()
@@ -130,11 +182,16 @@ export class EventLog extends EventEmitter {
   }
 
   events(): EventRecord[] {
-    if (!existsSync(this.file)) return []
-    return readFileSync(this.file, 'utf8')
-      .split('\n')
-      .filter((line) => line.trim() !== '')
-      .map((line) => parseJson<EventRecord>(line, 'event log'))
+    const paths = [...this.segments(), this.file]
+    const events: EventRecord[] = []
+    for (const path of paths) {
+      if (!existsSync(path)) continue
+      for (const line of readFileSync(path, 'utf8').split(String.fromCharCode(10))) {
+        if (line.trim() === '') continue
+        events.push(parseJson<EventRecord>(line, 'event log'))
+      }
+    }
+    return events
   }
 
   verify(): { ok: boolean; events: number; brokenAt: number | null; reason: string | null } {

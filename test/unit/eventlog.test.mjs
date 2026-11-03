@@ -1,14 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { EventLog } from '../../dist/store/eventlog.js'
 import { defaultPolicy } from '../../dist/policy/engine.js'
 
-function makeLog() {
+function makeLog(options = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'teamplane-log-'))
-  return { dir, log: EventLog.open(dir) }
+  return { dir, log: EventLog.open(dir, options) }
 }
 
 test('events replay into identical state', () => {
@@ -60,4 +60,31 @@ test('snapshots are a cache, not the source of truth', () => {
   assert.equal(reopened.state.policy.version, 1)
   assert.equal(reopened.verify().ok, true)
   reopened.close()
+})
+
+test('the log rotates into segments and still verifies', () => {
+  const { dir, log } = makeLog({ maxSegmentEvents: 3 })
+  for (let index = 0; index < 10; index += 1) {
+    log.append('policy.updated', 'system', defaultPolicy())
+  }
+  log.close()
+
+  const archives = readdirSync(join(dir, 'archive')).filter((name) => name.endsWith('.jsonl'))
+  assert.equal(archives.length, 3)
+  assert.equal(log.verify().ok, true)
+  assert.equal(log.verify().events, 10)
+
+  const reopened = EventLog.open(dir, { maxSegmentEvents: 3 })
+  assert.equal(reopened.state.lastSeq, 10)
+  assert.equal(reopened.verify().ok, true)
+  reopened.close()
+
+  rmSync(join(dir, 'snapshot.json'), { force: true })
+  const first = join(dir, 'archive', archives[0])
+  const lines = readFileSync(first, 'utf8').split(String.fromCharCode(10))
+  const parsed = JSON.parse(lines[0])
+  parsed.actor = 'attacker'
+  lines[0] = JSON.stringify(parsed)
+  writeFileSync(first, lines.join(String.fromCharCode(10)))
+  assert.throws(() => EventLog.open(dir, { maxSegmentEvents: 3 }), /hash mismatch/)
 })
