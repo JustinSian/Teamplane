@@ -1,6 +1,6 @@
 {
   "name": "teamplane",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "A deterministic control plane for multi-user agent teams: signed mandates, resource leases, permissioned memory and an auditable merge gate.",
   "keywords": [
     "agents",
@@ -56,6 +56,8 @@
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
+    "@deepseek-ai/cordis": "^4.0.5",
+    "@deepseek-ai/dsh-tools": "0.2.1-rc.5",
     "@types/node": "^24.0.0",
     "typescript": "5.9.3"
   }

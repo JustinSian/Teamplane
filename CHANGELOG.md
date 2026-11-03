@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.2 — 2026-11-03
+
+### Verified
+
+- The DSH guard now runs inside the **real** `@deepseek-ai/dsh-tools` `ToolRuntime` pipeline (`test/integration/dsh-runtime.test.mjs`): a write inside the mandate succeeds, a write outside it returns a tool error after the extensible pre-execute gate.
+- `@deepseek-ai/dsh-tools@0.2.1-rc.5` and `@deepseek-ai/cordis@4.0.5` are pinned dev dependencies, so CI exercises the compatibility claim on every run.
+
+### Changed
+
+- Tests 24 → 25; version 0.2.2.
+
 ## 0.2.1 — 2026-11-03
 
 ### Added
@@ -20,8 +31,6 @@ The product surface release. Everything in 0.1.0 still holds; this adds the path
 
 - **`teamplane playground`**: seeds a realistic team (4 tasks, 3 principals, 2 live leases, 3 memory fragments, 1 pending approval, a real denial) and serves the console on one command. `--open` launches the browser, `--keep` preserves the temp workspace.
 - **Console write actions**: approve/reject pending approvals, create tasks, token-in-URL onboarding, snapshot mode for screenshots.
-- **Dispatch**: `teamplane task launch <id> -- dsh` starts a runtime in the task worktree with `TEAMPLANE_URL`/`TEAMPLANE_MANDATE`, records a `task.launched` event and the pid; `--detach` for background runs.
-- **SSE resume**: the stream sends `id: <seq>` and replays from `Last-Event-ID` or `?since=`.
 - **GitHub Action** (`action.yml`): fail-closed audit-chain verification for CI.
 - **Landing page** (`site/`) and **Pages workflow**; social preview and real console screenshots.
 - **Release workflow**: tests, demo, MCP smoke, npm pack, git bundle, GitHub Release on tags.

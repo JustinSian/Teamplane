@@ -1,6 +1,6 @@
 # Status
 
-**Version:** 0.2.1 · **Date:** 2026-11-03 · **Maturity:** research preview
+**Version:** 0.2.2 · **Date:** 2026-11-03 · **Maturity:** research preview
 
 Teamplane is a working reference implementation of a multi-principal control plane for agent teams. It is not a finished product. This page is the honest matrix: what is shipped, what is partial, what is not built, and what has actually been measured.
 
@@ -20,7 +20,7 @@ Teamplane is a working reference implementation of a multi-principal control pla
 | HTTP + SSE | **Shipped** | REST + live events + static console |
 | Web console | **Partial** | read views, approve/reject, create task; no mandate issuance or policy editing |
 | MCP | **Shipped** | stdio + Streamable HTTP, 10 tools |
-| DSH host guard | **Experimental** | source + fake-`ctx` unit tests; **not exercised inside a live DSH profile** |
+| DSH host guard | **Verified at the pipeline level** | runs inside the real `@deepseek-ai/dsh-tools` `ToolRuntime` pipeline; a denied write returns a tool error. Not yet exercised inside a full DSH session. |
 | GitHub Action | **Shipped** | audit verification composite action |
 | Playground | **Shipped** | one command seeds a team and serves the console |
 | Dispatch | **Partial** | `task launch <id> -- dsh` spawns a runtime in the worktree and records a launch event; no session streaming or automatic assignment |
@@ -35,7 +35,7 @@ Teamplane is a working reference implementation of a multi-principal control pla
 
 | Claim | Evidence |
 |---|---|
-| Coordination invariants hold | `npm test` — **24/24** passing |
+| Coordination invariants hold | `npm test` — **25/25** passing |
 | End-to-end behaviour | `npm run demo` — **16/16** steps, 2.7 s, report in `demo/out/` |
 | MCP works on both transports | `npm run mcp:smoke` — 10 tools, stdio + HTTP |
 | Package is installable | `npm pack` + install into a clean prefix; CLI runs |
@@ -45,6 +45,7 @@ Teamplane is a working reference implementation of a multi-principal control pla
 | Decision latency | `/v1/authorize` **0.59 ms/call** on loopback (not a capacity claim) |
 | Dispatch works | `task launch <id> -- node -e ...` runs in the worktree with `TEAMPLANE_TASK` and records a launch event |
 | Action works | the composite action’s bash/node steps were run against a live control plane: `status=200 events=23 ok=true` |
+| Guard works in the real DSH pipeline | `test/integration/dsh-runtime.test.mjs` mounts `@deepseek-ai/dsh-tools` `ToolRuntime`, registers the guard, and asserts a denied write returns a tool error |
 | Coverage | **76.4% lines / 64.8% branches / 73.2% functions** (Node experimental coverage) |
 
 Reproduce:

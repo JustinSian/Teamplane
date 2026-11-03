@@ -112,7 +112,7 @@ file:src/auth.ts     dir:src/auth     branch:main     memory:team/auth
 
 | Claim | Command / result |
 |---|---|
-| Coordination invariants hold | `npm test` — **24/24** |
+| Coordination invariants hold | `npm test` — **25/25** |
 | End-to-end behaviour | `npm run demo` — **16/16** steps, 2.7 s |
 | MCP on both transports | `npm run mcp:smoke` — 10 tools |
 | One winner per contended lease | 50 concurrent requests: **1 × 201, 49 × 409** |
@@ -152,7 +152,7 @@ A shared control plane is the same row with `transport: streamable-http` and `ur
 
 ### Host guard (experimental)
 
-`dsh-plugin/` registers a synchronous `ctx.tools.guard` that fails closed when a write leaves the mandate or the worktree. No model, no network. It is unit-tested with a fake `ctx`, not yet exercised in a live DSH profile — read [docs/dsh.md](docs/dsh.md) before installing.
+`dsh-plugin/` registers a synchronous `ctx.tools.guard` that fails closed when a write leaves the mandate or the worktree. No model, no network. It is tested inside the real `@deepseek-ai/dsh-tools` pipeline (a denied write returns a tool error), but not yet inside a full DSH session — read [docs/dsh.md](docs/dsh.md) before installing.
 
 ---
 
@@ -160,7 +160,7 @@ A shared control plane is the same row with `transport: streamable-http` and `ur
 
 ```yaml
 - name: Verify the Teamplane event log
-  uses: JustinSian/Teamplane@v0.2.1
+  uses: JustinSian/Teamplane@v0.2.2
   with:
     control-plane-url: ${{ vars.TEAMPLANE_URL }}
     token: ${{ secrets.TEAMPLANE_TOKEN }}
@@ -217,7 +217,7 @@ Related work that shaped this: Collaborative Memory (ICML'25), MERGEGYM, ScopeGa
 
 ## Status
 
-`0.2.1` — **research preview**, single node, pre-1.0. The event log is O(n) on startup; snapshots mitigate, rotation is on the roadmap. Interfaces may change before `1.0`.
+`0.2.2` — **research preview**, single node, pre-1.0. The event log is O(n) on startup; snapshots mitigate, rotation is on the roadmap. Interfaces may change before `1.0`.
 
 If you build on it, pin a commit and read [SECURITY.md](SECURITY.md) and [STATUS.md](STATUS.md).
 
