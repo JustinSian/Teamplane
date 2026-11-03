@@ -53,6 +53,7 @@ export function createGuard(options = {}) {
   const context = readJson(join(cwd, '.teamplane', 'context.json'))
   const policy = readJson(join(cwd, '.teamplane', 'guard.json')) ?? {}
   const strict = options.strict ?? policy.strict ?? process.env.TEAMPLANE_GUARD === 'strict'
+  const denyCommands = options.denyCommands ?? policy.denyCommands ?? defaultDeniedCommands
 
   return function guard(exec) {
     const tool = toolName(exec)
@@ -60,7 +61,7 @@ export function createGuard(options = {}) {
 
     if (tool === 'bash' || tool === 'pwsh' || tool === 'terminal') {
       const command = String(args?.command ?? args?.cmd ?? '')
-      const denied = (policy.denyCommands ?? defaultDeniedCommands).find((pattern) => command.includes(pattern))
+      const denied = denyCommands.find((pattern) => command.includes(pattern))
       if (denied) return `teamplane: command denied by guard policy (${denied}).`
       if (strict && !context) return 'teamplane: no .teamplane/context.json; refusing shell access in strict mode.'
       return undefined
@@ -93,7 +94,10 @@ export function createGuard(options = {}) {
   }
 }
 
-const defaultDeniedCommands = ['git push --force', 'git push -f', 'git reset --hard', 'rm -rf /', 'shutdown', 'format c:']
+// Force pushes are deliberately absent: they are governed by the approval gate,
+// which a synchronous local guard cannot consult. Add them in guard.json if the
+// workflow never needs an approved force push.
+const defaultDeniedCommands = ['git reset --hard', 'rm -rf /', 'shutdown', 'format c:']
 
 export function apply(ctx, config = {}) {
   if (!ctx?.tools || typeof ctx.tools.guard !== 'function') return

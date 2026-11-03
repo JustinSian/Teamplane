@@ -15,7 +15,7 @@ export function apply(ctx, config = {}) {
 | Tool | Check |
 |---|---|
 | `write`, `edit`, `str_replace_editor`, `apply_patch`, `fs_write`, `create_file` | path must stay inside the worktree, outside `.teamplane/`, and inside the mandate's `paths` |
-| `bash`, `pwsh`, `terminal` | command must not contain a denied pattern (`git push --force`, `git reset --hard`, `rm -rf /`, …) |
+| `bash`, `pwsh`, `terminal` | command must not contain a denied pattern (`git reset --hard`, `rm -rf /`, … by default; add force push in `guard.json` if your workflow never needs an approved one) |
 | anything else | untouched |
 
 The guard is synchronous, local and offline. It reads `.teamplane/context.json` (written by `teamplane task start`) and optional `.teamplane/guard.json`:

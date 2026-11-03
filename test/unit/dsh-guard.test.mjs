@@ -25,8 +25,8 @@ test('guard denies writes outside the mandate and outside the worktree', () => {
   assert.match(guard({ name: 'write', args: { path: '.teamplane/context.json' } }), /read-only/)
 })
 
-test('guard denies dangerous shell commands', () => {
-  const guard = createGuard({ cwd: workspace() })
+test('guard denies configured shell commands', () => {
+  const guard = createGuard({ cwd: workspace(), denyCommands: ['git push --force'] })
   assert.match(guard({ name: 'bash', args: { command: 'git push --force origin main' } }), /command denied/)
   assert.equal(guard({ name: 'bash', args: { command: 'npm test' } }), undefined)
 })

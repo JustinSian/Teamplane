@@ -70,6 +70,8 @@ It denies:
 - shell commands containing a denied pattern;
 - in strict mode, any write when no context file exists.
 
+The built-in command list is deliberately short (`git reset --hard`, `rm -rf /`, `shutdown`, `format c:`). Force pushes are **not** in it by default: they are governed by the approval gate, which a synchronous local guard cannot consult. If your workflow never needs an approved force push, add it to `guard.json`.
+
 The check is synchronous, local, offline, and runs before the tool executes. `dsh-tools` documents guards as monotonic: a later listener cannot turn a denial into permission.
 
 ### Install (does not touch the running profile automatically)
@@ -107,4 +109,4 @@ That is why the merge gate and the event log remain the authoritative controls. 
 
 ## Compatibility
 
-Tested against the documented DSH `0.2.x` plugin surface: `ctx.tools.guard(fn)`, bundle patch rows, and the `dsh.bundle.patch` package field. The package declares `peerDependencies` on `@deepseek-ai/dsh >=0.2.0-rc.1 <0.3.0-0`; the guard uses no DSH imports at runtime, so a patch-level change does not break it.
+Built against the documented DSH `0.2.x` plugin surface: `ctx.tools.guard(fn)`, bundle patch rows, and the `dsh.bundle.patch` package field. The guard logic is unit-tested with a fake `ctx`, but it has **not yet been exercised inside a live DSH profile** in this release — treat it as experimental and verify it in your own profile before relying on it. The package declares `peerDependencies` on `@deepseek-ai/dsh >=0.2.0-rc.1 <0.3.0-0`; the guard uses no DSH imports at runtime, so a patch-level change does not break it.
