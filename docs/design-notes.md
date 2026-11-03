@@ -85,3 +85,19 @@ C1–C4 are covered by `npm test`. C5 is a structural property of `src/policy/en
 - **Truth.** Provenance records who said it, not whether it is true. A team can be confidently wrong together; `memory.conflict` makes disagreement visible, not correctness.
 - **Scale.** One writer, O(n) replay. The domain model is ready for segmentation; the implementation is not.
 - **Adoption.** The hardest part is not the protocol; it is convincing a team to write down its rules. The default policy is intentionally small so it can be read in one sitting.
+
+## References
+
+- DeepSeek Harness, *Super-agent 设计探索：迈向更自主的 Agent 系统* — [report](https://m.ithome.com/html/1020615.htm), [prototype](https://github.com/deepseek-ai/dsh-superagent-prototype)
+- Rezazadeh et al., *Collaborative Memory: Multi-User Memory Sharing in LLM Agents with Dynamic Access Control* (ICML 2025) — [arXiv:2505.18279](https://arxiv.org/abs/2505.18279)
+- Pedada et al., *Shared Selective Persistent Memory for Agentic LLM Systems* (2026) — [arXiv:2607.09493](https://arxiv.org/abs/2607.09493)
+- Dhanyamraju & Raghav, *Shared Organizational Memory for Enterprise Coding Agents* (2026) — [arXiv:2608.00122](https://arxiv.org/abs/2608.00122)
+- Subramanian et al., *Asymmetric Repository Lineage Modeling and Verifier-Guided Coordination in Concurrent AI Coding Agents* (2026) — [arXiv:2610.04779](https://arxiv.org/abs/2610.04779)
+- Zuvic, *Capability Gates Are Not Authorization: Confused-Deputy Failures in LLM Agent Frameworks* (2026) — [arXiv:2606.28679](https://arxiv.org/abs/2606.28679)
+- Tran-Truong et al., *DelegateGuard: Purpose-Bound Capabilities for Delegated LLM Agent Workflows* (2026) — [arXiv:2610.16005](https://arxiv.org/abs/2610.16005)
+- Dust, *the "multiplayer" operating system for enterprise AI* (2026) — [tech.eu](https://tech.eu/2026/05/18/dust-raises-40m-series-b-to-build-the-multiplayer-operating-system-for-enterprise-ai/)
+- Tencent Cloud, *Team Memory* (2026) — [overview](https://article.pchome.net/info/15346.html), [design note](https://cloud.tencent.com.cn/developer/article/2752618)
+- J. P. Anderson, *Computer Security Technology Planning Study* (1972) — the reference monitor.
+- C. A. Ellis & S. J. Gibbs, *Concurrency Control in Groupware Systems* (1989) — operational transformation.
+- R. G. Smith, *The Contract Net Protocol* (1980) — task allocation without a central controller.
+- D. M. Wegner, *Transactive Memory* (1987) — who knows what, in a group.
