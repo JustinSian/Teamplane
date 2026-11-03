@@ -1,6 +1,6 @@
 # Status
 
-**Version:** 0.5.2 · **Date:** 2026-11-03 · **Maturity:** research preview
+**Version:** 0.5.3 · **Date:** 2026-11-03 · **Maturity:** research preview
 
 Teamplane is a working reference implementation of a multi-principal control plane for agent teams. It is not a finished product. This page is the honest matrix: what is shipped, what is partial, what is not built, and what has actually been measured.
 
@@ -43,7 +43,7 @@ Teamplane is a working reference implementation of a multi-principal control pla
 
 | Claim | Evidence |
 |---|---|
-| Coordination invariants hold | `npm test` — **34/34** passing |
+| Coordination invariants hold | `npm test` — **35/35** passing |
 | End-to-end behaviour | `npm run demo` — **16/16** steps, 2.7 s, report in `demo/out/` |
 | MCP works on both transports | `npm run mcp:smoke` — 10 tools, stdio + HTTP |
 | Package is installable | `npm pack` + install into a clean prefix; CLI runs |

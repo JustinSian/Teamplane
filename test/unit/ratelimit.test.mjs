@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { RateLimiter } from '../../dist/server/ratelimit.js'
+import { RateLimiter, rateLimiterFromEnv } from '../../dist/server/ratelimit.js'
 
 test('a bucket allows a burst then asks the caller to wait', () => {
   let now = 0
@@ -30,4 +30,12 @@ test('idle buckets are pruned', () => {
   now = 2 * 60 * 60 * 1000
   limiter.prune()
   assert.equal(limiter.size(), 0)
+})
+
+test('an unset rate env still refills instead of freezing the bucket', async () => {
+  const limiter = rateLimiterFromEnv({ TEAMPLANE_RATE_BURST: '2' })
+  assert.equal(limiter.take('alice').ok, true)
+  assert.equal(limiter.take('alice').ok, true)
+  await new Promise((resolve) => setTimeout(resolve, 600))
+  assert.equal(limiter.take('alice').ok, true)
 })

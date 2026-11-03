@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.3 — 2026-11-03
+
+### Fixed
+
+- The rate limiter parsed an unset `TEAMPLANE_RATE_PER_SECOND` as `0`, so a fresh server had a 120-request burst and **never refilled**. The console would eventually show `rate_limited: retry in 60s` and stay there. Unset values now use the documented default (120 burst / 2 per second); explicit values, including `0`, still work.
+- Added a regression test that depletes a small bucket, waits, and requires a refill.
+
 ## 0.5.2 — 2026-11-03
 
 ### Fixed

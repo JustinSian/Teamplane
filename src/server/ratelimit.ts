@@ -59,8 +59,10 @@ export class RateLimiter {
 }
 
 export function rateLimiterFromEnv(env: NodeJS.ProcessEnv = process.env): RateLimiter {
-  const capacity = Number(env.TEAMPLANE_RATE_BURST ?? '')
-  const refill = Number(env.TEAMPLANE_RATE_PER_SECOND ?? '')
+  const rawCapacity = env.TEAMPLANE_RATE_BURST
+  const rawRefill = env.TEAMPLANE_RATE_PER_SECOND
+  const capacity = rawCapacity === undefined || rawCapacity === '' ? NaN : Number(rawCapacity)
+  const refill = rawRefill === undefined || rawRefill === '' ? NaN : Number(rawRefill)
   return new RateLimiter({
     capacity: Number.isFinite(capacity) && capacity > 0 ? capacity : 120,
     refillPerSecond: Number.isFinite(refill) && refill >= 0 ? refill : 2,
