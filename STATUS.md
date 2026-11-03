@@ -1,6 +1,6 @@
 # Status
 
-**Version:** 0.2.8 · **Date:** 2026-11-03 · **Maturity:** research preview
+**Version:** 0.2.9 · **Date:** 2026-11-03 · **Maturity:** research preview
 
 Teamplane is a working reference implementation of a multi-principal control plane for agent teams. It is not a finished product. This page is the honest matrix: what is shipped, what is partial, what is not built, and what has actually been measured.
 
@@ -18,6 +18,7 @@ Teamplane is a working reference implementation of a multi-principal control pla
 | Audit log | **Shipped** | append-only JSONL, SHA-256 chain, replay verification, snapshots |
 | CLI | **Shipped** | init, principals, mandates, tasks, leases, memory, approvals, submit, audit |
 | HTTP + SSE | **Shipped** | REST + live events + static console |
+| npm package | **Not published** | install from source (`npm install && npm run build && npm link`); the MCP row uses the local `teamplane` binary |
 | Web console | **Shipped (core admin)** | views, approve/reject, create task, issue mandate, revoke mandate, start task, apply policy |
 | MCP | **Shipped** | stdio + Streamable HTTP, 10 tools |
 | DSH host guard | **Verified at the pipeline level** | runs inside the real `@deepseek-ai/dsh-tools` `ToolRuntime` pipeline; a denied write returns a tool error. Not yet exercised inside a full DSH session. |
@@ -46,6 +47,7 @@ Teamplane is a working reference implementation of a multi-principal control pla
 | Decision latency | `/v1/authorize` **0.59 ms/call** on loopback (not a capacity claim) |
 | Dispatch works | `task launch <id> -- node -e ...` runs in the worktree with `TEAMPLANE_TASK` and records a launch event |
 | Action works | the composite action’s bash/node steps were run against a live control plane: `status=200 events=23 ok=true` |
+| CI is green | `ci`, `pages`, `security` and `release` pass on `main` in the public repository |
 | Guard works in the real DSH pipeline | `test/integration/dsh-runtime.test.mjs` mounts `@deepseek-ai/dsh-tools` `ToolRuntime`, registers the guard, and asserts a denied write returns a tool error |
 | Lease trade-off is measured | `npm run bench`: 30/30 conflict recall, 30/30 false positives on clean same-file edits; the merge gate is 0/30 on those |
 | Coverage | **76.4% lines / 64.8% branches / 73.2% functions** (Node experimental coverage) |
@@ -69,7 +71,6 @@ These are the gaps that separate "works on my machine" from "product":
 - **No adversarial security test.** Prompt injection, token theft, lease bypass and memory inference are analysed in the threat model, not red-teamed.
 - **No independent benchmark.** The 47.3% disjoint-file conflict figure is cited from MERGEGYM, not reproduced here.
 - **No user study.** Nobody outside the author has run a real team on it.
-- **CI not verified** on the private repository at the time of writing.
 
 ## What "product" requires next
 

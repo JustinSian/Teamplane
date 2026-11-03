@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.9 — 2026-11-03
+
+### Fixed
+
+- The DSH MCP configuration no longer tells users to run `npx -y teamplane mcp`, which fails until the package is on npm. It now uses the locally linked `teamplane mcp` command in the README, docs, example patch and `teamplane dsh print-config`.
+- `STATUS.md` no longer claims CI is unverified; `ci`, `pages`, `security` and `release` are green on the public repository.
+
+### Changed
+
+- Version 0.2.9; tests remain 29.
+
 ## 0.2.8 — 2026-11-03
 
 ### Added

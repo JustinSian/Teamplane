@@ -8,8 +8,8 @@
   config:
     serverName: teamplane
     transport: stdio
-    command: npx
-    args: ['-y', 'teamplane', 'mcp']
+    command: teamplane
+    args: ['mcp']
     failOnStartupError: false
     env:
       TEAMPLANE_URL: http://127.0.0.1:7317

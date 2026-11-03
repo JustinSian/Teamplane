@@ -121,7 +121,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       case 'doctor':
         return cmdDoctor(parsed)
       case 'version':
-        process.stdout.write('teamplane 0.2.8\n')
+        process.stdout.write('teamplane 0.2.9\n')
         return 0
       default:
         process.stderr.write(`Unknown command: ${command}\n\n${usage()}`)
@@ -144,7 +144,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 }
 
 function usage(): string {
-  return `teamplane 0.2.8 — a deterministic control plane for multi-user agent teams
+  return `teamplane 0.2.9 — a deterministic control plane for multi-user agent teams
 
 Usage: teamplane <command> [options]
 
@@ -689,10 +689,15 @@ function cmdDsh(parsed: Parsed, sub: string | undefined): number {
     process.stderr.write('Usage: teamplane dsh print-config\n')
     return 2
   }
-  const root = findRoot()
-  const config = readConfig(root)
-  const join = readJoinConfig(root)
-  const url = process.env.TEAMPLANE_URL ?? join?.server ?? `http://${config.host}:${config.port}`
+  let url = process.env.TEAMPLANE_URL ?? 'http://127.0.0.1:7317'
+  try {
+    const root = findRoot()
+    const config = readConfig(root)
+    const join = readJoinConfig(root)
+    url = process.env.TEAMPLANE_URL ?? join?.server ?? `http://${config.host}:${config.port}`
+  } catch {
+    // "dsh print-config" is useful outside a workspace; fall back to the default URL.
+  }
   const configYaml = `# Add this row to your DSH profile's cordis.patch.yml.
 # The stdio server reads TEAMPLANE_URL / TEAMPLANE_TOKEN from the environment.
 - id: mcp-teamplane
@@ -700,8 +705,8 @@ function cmdDsh(parsed: Parsed, sub: string | undefined): number {
   config:
     serverName: teamplane
     transport: stdio
-    command: npx
-    args: ['-y', 'teamplane', 'mcp']
+    command: teamplane
+    args: ['mcp']
     failOnStartupError: false
     env:
       TEAMPLANE_URL: ${url}

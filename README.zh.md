@@ -165,8 +165,8 @@ teamplane dsh print-config
   config:
     serverName: teamplane
     transport: stdio
-    command: npx
-    args: ['-y', 'teamplane', 'mcp']
+    command: teamplane
+    args: ['mcp']
     env:
       TEAMPLANE_URL: http://127.0.0.1:7317
       TEAMPLANE_TOKEN: !!js process.env.TEAMPLANE_TOKEN
