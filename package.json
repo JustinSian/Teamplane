@@ -1,6 +1,6 @@
 {
   "name": "teamplane",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A deterministic control plane for multi-user agent teams: signed mandates, resource leases, permissioned memory and an auditable merge gate.",
   "keywords": [
     "agents",
@@ -38,6 +38,9 @@
     "dsh-plugin",
     "README.md",
     "README.zh.md",
+    "STATUS.md",
+    "PRODUCT.md",
+    "ROADMAP.md",
     "LICENSE"
   ],
   "engines": {
