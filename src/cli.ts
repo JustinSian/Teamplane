@@ -1,4 +1,5 @@
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
+import { rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseArgs } from 'node:util'
 import type { Policy, Role } from './core/types.js'
@@ -9,6 +10,7 @@ import { validatePolicy } from './policy/engine.js'
 import { verifyMandate } from './domain/mandate.js'
 import { runMcpStdio } from './mcp/stdio.js'
 import { runDemo } from './demo/run.js'
+import { seedPlayground } from './demo/seed.js'
 
 const OPTIONS = {
   name: { type: 'string' },
@@ -51,6 +53,8 @@ const OPTIONS = {
   force: { type: 'boolean' },
   quiet: { type: 'boolean' },
   ci: { type: 'boolean' },
+  keep: { type: 'boolean' },
+  open: { type: 'boolean' },
 } as const
 
 interface Parsed {
@@ -111,10 +115,12 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         return 0
       case 'demo':
         return await runDemo({ ci: Boolean(parsed.values.ci) })
+      case 'playground':
+        return await cmdPlayground(parsed)
       case 'doctor':
         return cmdDoctor(parsed)
       case 'version':
-        process.stdout.write('teamplane 0.1.0\n')
+        process.stdout.write('teamplane 0.2.0\n')
         return 0
       default:
         process.stderr.write(`Unknown command: ${command}\n\n${usage()}`)
@@ -137,7 +143,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 }
 
 function usage(): string {
-  return `teamplane 0.1.0 — a deterministic control plane for multi-user agent teams
+  return `teamplane 0.2.0 — a deterministic control plane for multi-user agent teams
 
 Usage: teamplane <command> [options]
 
@@ -167,6 +173,7 @@ Usage: teamplane <command> [options]
   audit verify | audit export
   dsh print-config
   mcp
+  playground [--port 7317] [--open] [--keep]
   demo [--ci]
   doctor
   version
@@ -235,6 +242,40 @@ function cmdJoin(parsed: Parsed): number {
   writeJoinConfig(root, { version: 1, server, name: value(parsed, 'name') ?? readConfig(root).name, joinedAt: new Date().toISOString() })
   process.stdout.write(`Joined ${server}. Set TEAMPLANE_TOKEN to your principal token.\n`)
   return 0
+}
+
+async function cmdPlayground(parsed: Parsed): Promise<number> {
+  const port = value(parsed, 'port') ? Number(value(parsed, 'port')) : 0
+  const seed = await seedPlayground({ port, host: value(parsed, 'host') })
+  const consoleUrl = `${seed.running.url}/?token=${encodeURIComponent(seed.tokens.alice)}`
+  process.stdout.write(
+    `Teamplane playground\n\n` +
+      `Console: ${consoleUrl}\n` +
+      `Owner:   alice (${seed.ids.alice})\n` +
+      `Token:   ${seed.tokens.alice}\n\n` +
+      `Three agents, three tasks, two live leases, one pending approval.\n` +
+      `Press Ctrl+C to stop.\n`,
+  )
+  if (flag(parsed, 'open')) openBrowser(consoleUrl)
+  await new Promise<void>((resolve) => {
+    const stop = () => {
+      seed.running.close().then(() => {
+        seed.workspace.log.close()
+        if (!flag(parsed, 'keep')) rmSync(seed.root, { recursive: true, force: true })
+        resolve()
+      })
+    }
+    process.once('SIGINT', stop)
+    process.once('SIGTERM', stop)
+  })
+  return 0
+}
+
+function openBrowser(url: string): void {
+  const command = process.platform === 'win32' ? 'cmd' : process.platform === 'darwin' ? 'open' : 'xdg-open'
+  const args = process.platform === 'win32' ? ['/c', 'start', '', url] : [url]
+  const child = spawn(command, args, { stdio: 'ignore', detached: true })
+  child.unref()
 }
 
 async function cmdServe(parsed: Parsed): Promise<number> {
