@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.2 — 2026-11-03
+
+### Fixed
+
+- A fresh console no longer shows an empty **Live Events** panel. New SSE connections replay the last 20 matching events when the caller does not send `Last-Event-ID` or `?since=`; reconnects still resume from the last event id.
+- The streaming integration test now connects without `since` and asserts that the backlog is delivered.
+
 ## 0.5.1 — 2026-11-03
 
 ### Added

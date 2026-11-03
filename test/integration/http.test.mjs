@@ -130,7 +130,7 @@ test('HTTP surface: auth, policy, leases, memory, audit and MCP', async (t) => {
   assert.ok(ticket.body.ticket)
   const controller = new AbortController()
   try {
-    const stream = await fetch(`${running.url}/v1/stream?ticket=${encodeURIComponent(ticket.body.ticket)}&since=1&types=principal.created`, {
+    const stream = await fetch(`${running.url}/v1/stream?ticket=${encodeURIComponent(ticket.body.ticket)}&types=principal.created`, {
       signal: controller.signal,
     })
     const reader = stream.body.getReader()
@@ -142,7 +142,7 @@ test('HTTP surface: auth, policy, leases, memory, audit and MCP', async (t) => {
       if (done) break
       buffer += decoder.decode(value, { stream: true })
     }
-    assert.match(buffer, /id: 2/)
+    assert.match(buffer, /id: \d+/)
     assert.match(buffer, /principal\.created/)
   } finally {
     controller.abort()

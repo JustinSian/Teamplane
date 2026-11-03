@@ -98,11 +98,12 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
       const headerId = Number(req.headers['last-event-id'] ?? '')
       const querySince = Number(url.searchParams.get('since') ?? '')
       const since = Number.isFinite(headerId) && headerId > 0 ? headerId : Number.isFinite(querySince) && querySince > 0 ? querySince : 0
-      writeSse(res, 'hello', { at: nowIso(), types, since })
-      if (since > 0) {
-        for (const event of workspace.service.eventsSince(since, types)) {
-          writeSse(res, 'event', event, event.seq)
-        }
+      // A fresh console should not look empty: replay the last 20 events when
+      // the caller did not supply Last-Event-ID or ?since=.
+      const replayFrom = since > 0 ? since : Math.max(0, workspace.service.state.lastSeq - 20)
+      writeSse(res, 'hello', { at: nowIso(), types, since: replayFrom })
+      for (const event of workspace.service.eventsSince(replayFrom, types)) {
+        writeSse(res, 'event', event, event.seq)
       }
       clients.add(client)
       const keepAlive = setInterval(() => writeSse(res, 'ping', { at: nowIso() }), 15000)

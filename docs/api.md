@@ -66,7 +66,7 @@ Principal tokens are printed once by `init` / `user add`, stored only as SHA-256
 | POST | `/v1/approvals/:id/consume` | manual consumption; `/v1/authorize` consumes by default |
 | GET | `/v1/events?since=&types=` | structured events |
 | POST | `/v1/stream-ticket` | one-time SSE ticket (30 s, single use) |
-| GET | `/v1/stream?ticket=&types=` | SSE stream |
+| GET | `/v1/stream?ticket=&types=` | SSE stream; a new connection replays the last 20 events unless `Last-Event-ID`/`since` is supplied |
 | GET | `/v1/audit/verify` | hash-chain verification |
 | GET | `/v1/state` | console summary |
 | POST | `/mcp` | MCP over Streamable HTTP |

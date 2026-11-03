@@ -1,6 +1,6 @@
 # Status
 
-**Version:** 0.5.1 · **Date:** 2026-11-03 · **Maturity:** research preview
+**Version:** 0.5.2 · **Date:** 2026-11-03 · **Maturity:** research preview
 
 Teamplane is a working reference implementation of a multi-principal control plane for agent teams. It is not a finished product. This page is the honest matrix: what is shipped, what is partial, what is not built, and what has actually been measured.
 
