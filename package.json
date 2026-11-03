@@ -1,0 +1,51 @@
+{
+  "name": "teamplane",
+  "version": "0.1.0",
+  "description": "A deterministic control plane for multi-user agent teams: signed mandates, resource leases, permissioned memory and an auditable merge gate.",
+  "keywords": [
+    "agents",
+    "multi-agent",
+    "mcp",
+    "deepseek-harness",
+    "dsh",
+    "authorization",
+    "capability",
+    "coordination"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "teamplane": "./bin/teamplane.js"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./client": "./dist/client/api.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "web",
+    "docs",
+    "dsh-plugin",
+    "README.md",
+    "README.zh.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node scripts/run-tests.mjs",
+    "demo": "npm run build && node bin/teamplane.js demo",
+    "demo:ci": "npm run build && node bin/teamplane.js demo --ci",
+    "mcp:smoke": "npm run build && node scripts/mcp-smoke.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "5.9.3"
+  }
+}
