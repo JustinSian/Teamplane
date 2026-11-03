@@ -121,7 +121,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       case 'doctor':
         return cmdDoctor(parsed)
       case 'version':
-        process.stdout.write('teamplane 0.5.3\n')
+        process.stdout.write('teamplane 0.5.4\n')
         return 0
       default:
         process.stderr.write(`Unknown command: ${command}\n\n${usage()}`)
@@ -144,7 +144,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 }
 
 function usage(): string {
-  return `teamplane 0.5.3 — a deterministic control plane for multi-user agent teams
+  return `teamplane 0.5.4 — a deterministic control plane for multi-user agent teams
 
 Usage: teamplane <command> [options]
 
@@ -227,7 +227,8 @@ function cmdInit(parsed: Parsed): number {
   process.stdout.write(
     `Initialized "${result.config.name}" in ${result.root}\n\n` +
       `Owner:  ${result.principal.display} (${result.principal.id})\n` +
-      `Token:  ${result.token}\n\n` +
+      `Token:  ${result.token}\n` +
+      `Keys:   ${result.config.keysDir ?? '(workspace)'}\n\n` +
       `This token is shown once. Export it before using the CLI:\n` +
       `  export TEAMPLANE_TOKEN="${result.token}"\n` +
       `Start the control plane with:\n` +

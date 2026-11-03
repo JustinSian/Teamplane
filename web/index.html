@@ -47,6 +47,27 @@
             <div class="card"><span class="card-label">Pending approvals</span><span id="stat-approvals" class="card-value">–</span></div>
             <div class="card"><span class="card-label">Events</span><span id="stat-events" class="card-value">–</span></div>
           </div>
+          <section id="onboarding" class="onboarding" hidden>
+            <div class="onboarding-head">
+              <div>
+                <h2>Your workspace is ready</h2>
+                <p class="muted">
+                  No tasks yet — this is real state, not the seeded playground. The usual first move is
+                  a teammate, a task, and a task-scoped mandate.
+                </p>
+              </div>
+              <button id="copy-onboarding" class="ghost" type="button">Copy commands</button>
+            </div>
+            <pre id="onboarding-commands" class="onboarding-code">teamplane user add --name bob --role maintainer
+teamplane task create --title "first task" --repo . --verify "npm test"
+teamplane mandate issue --subject BOB_ID --task TASK_ID --paths src --ttl 1h
+teamplane task start TASK_ID --id MANDATE_ID</pre>
+            <p class="muted">
+              Run these from this repository. Replace <code>BOB_ID</code> / <code>TASK_ID</code> /
+              <code>MANDATE_ID</code> with the ids printed by the commands.
+              <code>teamplane playground</code> opens a separate seeded demo.
+            </p>
+          </section>
           <div class="grid">
             <section class="block">
               <h2>Tasks</h2>

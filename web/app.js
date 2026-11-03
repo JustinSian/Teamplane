@@ -84,6 +84,8 @@ async function refresh() {
     $('stat-leases').textContent = String(snapshot.leases?.length ?? 0)
     $('stat-approvals').textContent = String(snapshot.approvals?.length ?? 0)
     $('stat-events').textContent = String(snapshot.events ?? 0)
+    const empty = (snapshot.tasks?.length ?? 0) === 0 && (snapshot.leases?.length ?? 0) === 0 && (snapshot.approvals?.length ?? 0) === 0
+    $('onboarding').hidden = !empty
     renderTasks(snapshot.tasks ?? [])
     renderApprovals(snapshot.approvals ?? [])
 
@@ -457,6 +459,18 @@ function boot() {
   $('connect').addEventListener('click', connect)
   $('token').addEventListener('keydown', (event) => {
     if (event.key === 'Enter') connect()
+  })
+  $('copy-onboarding').addEventListener('click', async () => {
+    const button = $('copy-onboarding')
+    try {
+      await navigator.clipboard.writeText($('onboarding-commands').textContent)
+      button.textContent = 'Copied'
+      setTimeout(() => {
+        button.textContent = 'Copy commands'
+      }, 1500)
+    } catch {
+      button.textContent = 'Select and copy'
+    }
   })
   $('memory-form').addEventListener('submit', searchMemory)
   $('explain-form').addEventListener('submit', explain)

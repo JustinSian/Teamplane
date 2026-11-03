@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.4 — 2026-11-03
+
+### Added
+
+- The Overview now shows a first-run panel when a real workspace has no tasks, leases or approvals. It lists the `user add` → `task create` → `mandate issue` → `task start` sequence and has a **Copy commands** button. This is deliberately separate from the seeded `teamplane playground` demo.
+- `teamplane init` prints the key directory alongside the owner token.
+
 ## 0.5.3 — 2026-11-03
 
 ### Fixed
