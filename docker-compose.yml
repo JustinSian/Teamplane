@@ -4,7 +4,7 @@ services:
   control-plane:
     build:
       context: .
-    image: teamplane:0.6.2
+    image: teamplane:0.6.3
     init: true
     user: "${TEAMPLANE_UID:-1000}:${TEAMPLANE_GID:-1000}"
     working_dir: /workspace/repo

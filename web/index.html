@@ -55,7 +55,14 @@
           </section>
           <section id="demo-tip" class="demo-tip" hidden>
             <strong>Seeded demo</strong>
-            <span>This is not your repository. Try: <b>Approve</b> the request → watch <b>Live events</b> → open <b>Audit</b>.</span>
+            <div>
+              <span>This is not your repository.</span>
+              <ol class="demo-steps">
+                <li>Approve the pending request</li>
+                <li>Watch Live events</li>
+                <li>Open Audit → Verify</li>
+              </ol>
+            </div>
           </section>
           <div class="cards">
             <div class="card"><span class="card-label">Tasks</span><span id="stat-tasks" class="card-value">–</span></div>
@@ -73,7 +80,7 @@
                 </p>
               </div>
               <div class="row">
-                <button id="starter-task" type="button">Create starter task</button>
+                <button id="starter-task" type="button">Create a working example</button>
                 <button id="copy-onboarding" class="ghost" type="button">Copy commands</button>
               </div>
             </div>
@@ -132,7 +139,7 @@ teamplane task start TASK_ID --id MANDATE_ID</pre>
               <button type="submit">Start task</button>
             </form>
           </section>
-          <div class="table-wrap"><table id="tasks-table"><thead><tr><th>Task</th><th>Status</th><th>Mandate</th><th>Worktree</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrap"><table id="tasks-table"><thead><tr><th>Task</th><th>Status</th><th>Mandate</th><th>Scope</th><th>Worktree</th></tr></thead><tbody></tbody></table></div>
         </section>
 
         <section id="tab-mandates" class="panel">

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.3 — 2026-11-03
+
+### Added
+
+- **Create a working example** in the first-run panel now performs the full chain: create a task, issue a task-scoped mandate to the owner, and start its worktree. The next-step banner then moves to the next action.
+- The playground demo tip is a three-step checklist: approve the request, watch Live events, open Audit → Verify.
+- Live event rows are clickable and expand to the raw event JSON (type, actor, data, hashes).
+- The Tasks table has a **Scope** column showing the mandate's allowed paths, with branches in the tooltip.
+
 ## 0.6.2 — 2026-11-03
 
 ### Added

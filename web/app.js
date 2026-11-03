@@ -41,6 +41,8 @@ const state = {
   policyDirty: false,
   principals: [],
   mandates: [],
+  tasks: [],
+  expandedEvent: null,
 }
 
 async function api(path, options = {}) {
@@ -129,7 +131,8 @@ async function refresh() {
       $('next-command').hidden = !next.command
       $('copy-next').hidden = !next.command
     }
-    renderTasks(snapshot.tasks ?? [])
+    state.tasks = snapshot.tasks ?? []
+    renderTasks(state.tasks)
     renderApprovals(snapshot.approvals ?? [])
 
     const principals = await api('/v1/principals')
@@ -146,6 +149,7 @@ async function refresh() {
     const mandates = await api('/v1/mandates')
     state.mandates = mandates.mandates ?? []
     renderMandates(state.mandates)
+    renderTasks(state.tasks)
     fillSelect(
       $('start-task'),
       (snapshot.tasks ?? []).filter((task) => task.status !== 'merged' && task.status !== 'closed').map((task) => ({ value: task.id, label: `${task.id} — ${task.title}` })),
@@ -359,21 +363,32 @@ async function createTask(event) {
   }
 }
 
-async function createStarterTask() {
+async function createWorkingExample() {
   const button = $('starter-task')
   button.disabled = true
-  button.textContent = 'Creating…'
   try {
-    await api('/v1/tasks', {
+    button.textContent = 'Creating task…'
+    const me = await api('/v1/me')
+    const task = await api('/v1/tasks', {
       method: 'POST',
       body: JSON.stringify({ title: 'First task', verify: ['node -e "process.exit(0)"'] }),
+    })
+    button.textContent = 'Issuing mandate…'
+    const issued = await api('/v1/mandates', {
+      method: 'POST',
+      body: JSON.stringify({ subject: me.principal.id, task: task.id, paths: ['src'], ttlSeconds: 3600 }),
+    })
+    button.textContent = 'Starting worktree…'
+    await api(`/v1/tasks/${encodeURIComponent(task.id)}/start`, {
+      method: 'POST',
+      body: JSON.stringify({ mandateId: issued.mandate.id }),
     })
     await refresh()
   } catch (error) {
     $('live-label').textContent = error.message
   } finally {
     button.disabled = false
-    button.textContent = 'Create starter task'
+    button.textContent = 'Create a working example'
   }
 }
 
@@ -443,11 +458,17 @@ function renderFeed() {
   feed.replaceChildren()
   for (const event of state.events) {
     const row = element('div', 'feed-row')
-    row.title = event.type
+    row.title = `${event.type} — click for details`
     row.append(element('span', 'type', eventLabel(event.type)))
     row.append(element('span', '', short(event.actor)))
     row.append(element('span', 'at', when(event.at)))
-    feed.append(row)
+    row.addEventListener('click', () => {
+      state.expandedEvent = state.expandedEvent === event.id ? null : event.id
+      renderFeed()
+    })
+    const detail = element('pre', 'feed-detail', JSON.stringify(event, null, 2))
+    detail.hidden = state.expandedEvent !== event.id
+    feed.append(row, detail)
   }
 }
 
@@ -539,7 +560,7 @@ function boot() {
   $('token').addEventListener('keydown', (event) => {
     if (event.key === 'Enter') connect()
   })
-  $('starter-task').addEventListener('click', createStarterTask)
+  $('starter-task').addEventListener('click', createWorkingExample)
   $('copy-connect').addEventListener('click', async () => {
     const button = $('copy-connect')
     try {
