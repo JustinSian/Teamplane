@@ -11,7 +11,7 @@ Include the version/commit, the reproduction, and the event log if relevant. Do 
 
 | Version | Supported |
 |---|---|
-| 0.4.x | yes, best effort |
+| 0.5.x | yes, best effort |
 
 Pre-1.0 means interfaces may change, but security fixes are backported to the latest minor.
 
@@ -31,7 +31,7 @@ What Teamplane enforces:
 - Writes must hold a lease; leases conflict by typed containment, not guesswork. Successful `fs.write` authorisations count against `maxWrites`.
 - Mandates attenuate; approvals derive `requiredRole` from the matching policy rule (a request body cannot choose it), are single-use, action-hash-bound and consumed atomically.
 - Verification commands are bound to a task at creation (or changed by an authorised principal); `submit` rejects commands supplied in the request body.
-- Memory reads are ACL-projected; `memory.written` events and SSE frames redact content for principals that cannot read the fragment.
+- Memory reads are ACL-projected; `memory.written` events and SSE frames redact content for principals that cannot read the fragment. Fragment files are sealed with AES-256-GCM derived from the signing key.
 - Events are hash-chained and replay-verified. Snapshots are written as a cache but **never loaded**; startup always replays the chain.
 - SSE clients use a one-time ticket (`POST /v1/stream-ticket`); the `?token=` fallback is documented as legacy.
 

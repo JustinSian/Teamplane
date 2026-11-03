@@ -20,6 +20,9 @@ test('memory text lives in the vault, not the event log, and survives restart', 
   assert.ok(!logText.includes('layoff list'))
   assert.match(logText, /textHash/)
   assert.ok(existsSync(join(repo, '.teamplane', 'memory', `${fragment.id}.json`)))
+  const vaultText = readFileSync(join(repo, '.teamplane', 'memory', `${fragment.id}.json`), 'utf8')
+  assert.ok(!vaultText.includes('layoff list'))
+  assert.match(vaultText, /"v":1/)
 
   workspace.log.close()
   const reopened = loadWorkspace(repo)

@@ -116,7 +116,7 @@ export class TeamplaneService {
     this.log = log
     this.keys = keys
     this.options = options
-    this.vault = new MemoryVault(log.dir)
+    this.vault = new MemoryVault(log.dir, keys.privateKeyPem)
   }
 
   get state() {

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0 — 2026-11-03
+
+### Changed
+
+- Memory vault fragments are sealed with AES-256-GCM. The key is derived from the Ed25519 signing key with HKDF; the event log still stores only metadata + `textHash`. Existing 0.4.x plaintext vault files are re-sealed on load.
+- A missing key for an encrypted fragment fails closed with `memory_key_missing`; a corrupt tag fails with `memory_corrupt`.
+
 ## 0.4.2 — 2026-11-03
 
 ### Fixed

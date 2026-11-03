@@ -158,7 +158,7 @@ The gate returns a result object with `ok`, never a bare error, so a caller can 
   events.jsonl         active segment
   archive/             rotated segments, events-<firstSeq>.jsonl
   snapshot.json        written but never trusted (safe to delete)
-  memory/              memory fragments (text, 0600)
+  memory/              memory fragments (AES-256-GCM, 0600)
 ```
 
 Signing keys are **not** under `.teamplane/`: the default is `~/.teamplane/keys/<workspace-id>/root.key`, so a task worktree cannot read them by relative path.

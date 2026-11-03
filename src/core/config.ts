@@ -148,7 +148,7 @@ export function loadWorkspace(rootOrCwd = process.cwd(), publicUrl?: string): Lo
   const config = readConfig(root)
   const keys = loadKeys(config.keysDir ?? join(stateDir(root), 'keys'))
   const log = EventLog.open(stateDir(root))
-  new MemoryVault(stateDir(root)).hydrate(log.state)
+  new MemoryVault(stateDir(root), keys.privateKeyPem).hydrate(log.state)
   const allowedRepoRoots = process.env.TEAMPLANE_REPO_ROOTS
     ? process.env.TEAMPLANE_REPO_ROOTS.split(delimiter).map((path) => path.trim()).filter(Boolean)
     : undefined
