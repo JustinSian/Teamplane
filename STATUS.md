@@ -43,6 +43,8 @@ Teamplane is a working reference implementation of a multi-principal control pla
 | One winner per contended lease | 50 concurrent requests: **1 × 201, 49 × 409** |
 | Distinct resources do not block each other | 50 concurrent distinct keys: **50 × 201** |
 | Decision latency | `/v1/authorize` **0.59 ms/call** on loopback (not a capacity claim) |
+| Dispatch works | `task launch <id> -- node -e ...` runs in the worktree with `TEAMPLANE_TASK` and records a launch event |
+| Action works | the composite action’s bash/node steps were run against a live control plane: `status=200 events=23 ok=true` |
 | Coverage | **76.4% lines / 64.8% branches / 73.2% functions** (Node experimental coverage) |
 
 Reproduce:
@@ -58,7 +60,7 @@ teamplane playground --open
 
 These are the gaps that separate "works on my machine" from "product":
 
-- **No real agent loop.** The demo's three "agents" are API clients, not DSH/Claude/Cursor sessions. No model is in the loop.
+- **No real agent loop.** The demo's three "agents" are API clients, not DSH/Claude/Cursor sessions. Dispatch was exercised with `node`, not with a live DSH/Claude/Cursor runtime.
 - **No multi-machine test.** All measurements are one Node process over loopback.
 - **No soak or chaos test.** No 24-hour run, no kill -9 recovery test beyond unit-level replay.
 - **No adversarial security test.** Prompt injection, token theft, lease bypass and memory inference are analysed in the threat model, not red-teamed.
