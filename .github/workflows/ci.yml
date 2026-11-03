@@ -26,3 +26,13 @@ jobs:
       - run: npm test
       - run: npm run demo:ci
       - run: npm run mcp:smoke
+
+  docker:
+    name: container image
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose config
+      - run: docker build -t teamplane:ci .
+      - run: docker run --rm teamplane:ci version
