@@ -213,6 +213,7 @@ teamplane audit verify
 | [docs/threat-model.md](docs/threat-model.md) | prompt injection, confused deputy, lease bypass, inference |
 | [docs/design-notes.md](docs/design-notes.md) | prior art and what would falsify the design |
 | [docs/comparison.md](docs/comparison.md) | Dust, Tencent Team Memory, Super-agent, plain subagents |
+| [docs/launch.md](docs/launch.md) | the launch argument, with evidence and caveats |
 | [docs/policy.md](docs/policy.md) · [docs/api.md](docs/api.md) · [docs/mcp.md](docs/mcp.md) | contracts |
 
 Related work that shaped this: Collaborative Memory (ICML'25), MERGEGYM, ScopeGate, DelegateGuard, and DeepSeek Harness's Super-agent. Teamplane extends the Super-agent *Mandate* from one user to many principals and moves the gate out of the model.
