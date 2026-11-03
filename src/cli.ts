@@ -409,7 +409,16 @@ async function cmdTask(parsed: Parsed, sub: string | undefined): Promise<number>
   if (sub === 'start') {
     const taskId = value(parsed, 'task') ?? parsed.positionals[2] ?? ''
     const task = await client.startTask(taskId, value(parsed, 'id'))
-    print(parsed, task)
+    if (flag(parsed, 'json')) {
+      print(parsed, task)
+    } else {
+      process.stdout.write(
+        `Started ${String(task.id)}\n` +
+          `Worktree: ${String(task.worktree)}\n` +
+          `Next: cd into the worktree, export TEAMPLANE_TOKEN, and run your agent there.\n` +
+          `DSH: add the MCP row printed by "teamplane dsh print-config".\n`,
+      )
+    }
     return 0
   }
   if (sub === 'list' || sub === undefined) {
