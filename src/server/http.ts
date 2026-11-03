@@ -6,6 +6,7 @@ import type { AuthenticatedPrincipal, MandateClaims, Policy, Role } from '../cor
 import { TeamplaneError, fail, fail as raise, nowIso, parseJson } from '../core/util.js'
 import type { LoadedWorkspace } from '../core/config.js'
 import { handleMcpHttp } from '../mcp/http.js'
+import { rateLimiterFromEnv } from './ratelimit.js'
 
 const WEB_ROOT = fileURLToPath(new URL('../../web/', import.meta.url))
 const MAX_BODY = 1024 * 1024
@@ -31,6 +32,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
   const host = options.host ?? workspace.config.host
   const port = options.port ?? workspace.config.port
   const clients = new Set<{ res: ServerResponse; types: string[] }>()
+  const limiter = rateLimiterFromEnv()
   const sweep = setInterval(() => {
     try {
       workspace.service.expireLeases()
@@ -63,6 +65,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
     if (path === '/mcp') {
       const token = bearer(req)
       const actor = workspace.service.authenticate(token)
+      takeToken(limiter, actor.principal.id)
       const rawMandate = req.headers['x-teamplane-mandate'] as string | undefined
       workspace.service.resolveMandate(rawMandate, actor)
       const address = server.address()
@@ -390,6 +393,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
   function contextFor(req: IncomingMessage): RequestContext {
     const token = bearer(req)
     const actor = workspace.service.authenticate(token)
+    takeToken(limiter, actor.principal.id)
     const mandate = workspace.service.resolveMandate(req.headers['x-teamplane-mandate'] as string | undefined, actor)
     return { actor, mandate }
   }
@@ -418,6 +422,16 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
       clients.clear()
       await new Promise<void>((resolve) => server.close(() => resolve()))
     },
+  }
+}
+
+function takeToken(limiter: ReturnType<typeof rateLimiterFromEnv>, key: string): void {
+  const result = limiter.take(key)
+  if (!result.ok) {
+    fail('rate_limited', `Rate limit exceeded; retry in ${Math.ceil(result.retryAfterMs / 1000)}s.`, 429, {
+      retryAfterMs: result.retryAfterMs,
+      remaining: result.remaining,
+    })
   }
 }
 
@@ -471,6 +485,10 @@ function sendError(res: ServerResponse, error: unknown): void {
     return
   }
   if (error instanceof TeamplaneError) {
+    if (error.code === 'rate_limited') {
+      const retryAfter = Number((error.details as { retryAfterMs?: number } | null)?.retryAfterMs ?? 1000)
+      res.setHeader('Retry-After', String(Math.max(1, Math.ceil(retryAfter / 1000))))
+    }
     sendJson(res, error.status, { error: { code: error.code, message: error.message, details: error.details ?? null } })
     return
   }

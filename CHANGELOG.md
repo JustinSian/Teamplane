@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.5 — 2026-11-03
+
+### Added
+
+- **Per-principal rate limiting**: a token bucket (120 burst, 2 req/s refill) guards `/v1/*` and `/mcp`; a `429` carries `Retry-After`. Configurable with `TEAMPLANE_RATE_BURST` and `TEAMPLANE_RATE_PER_SECOND`.
+- Tests 25 → 28 (burst, refill, prune).
+
 ## 0.2.4 — 2026-11-03
 
 ### Added

@@ -14,7 +14,7 @@ jobs:
       # The control plane must be reachable from the runner.
       # For a private network, run this step on a self-hosted runner instead.
       - name: Verify the Teamplane event log
-        uses: JustinSian/Teamplane@v0.2.4
+        uses: JustinSian/Teamplane@v0.2.5
         with:
           control-plane-url: ${{ vars.TEAMPLANE_URL }}
           token: ${{ secrets.TEAMPLANE_TOKEN }}

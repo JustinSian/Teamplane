@@ -27,6 +27,7 @@ Principal tokens are printed once by `init` / `user add`, stored only as SHA-256
 | 422 | validation error (policy, memory, body) |
 | 428 | approval required (`ask`) |
 | 413 | body over 1 MiB |
+| 429 | per-principal rate limit; honour `Retry-After` |
 
 ## Endpoints
 
@@ -165,6 +166,10 @@ data: {"seq":42,"type":"lease.denied",...}
 Each `event` frame carries `id: <seq>`; a reconnecting client sends `Last-Event-ID` and the server replays the events after it. A custom client can pass `?since=<seq>` instead.
 
 `EventSource` cannot set an `Authorization` header, so the stream accepts `?token=`. Use it only over loopback or TLS; the token can appear in proxy logs. Other clients should send the header instead.
+
+## Rate limits
+
+Each principal gets a token bucket: **120 burst**, **2 requests/second** refill by default. Override with `TEAMPLANE_RATE_BURST` and `TEAMPLANE_RATE_PER_SECOND`. A `429` carries `Retry-After`; SSE connections are not counted.
 
 ## Idempotency and concurrency
 
