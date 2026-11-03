@@ -1,10 +1,12 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { homedir } from 'node:os'
+import { delimiter, dirname, join, resolve } from 'node:path'
 import type { Policy, Principal, Role } from './types.js'
 import type { JsonValue } from './util.js'
 import { canonicalJson, fail, nowIso, parseJson, randomToken, sha256 } from './util.js'
 import { defaultPolicy } from '../policy/engine.js'
 import { EventLog } from '../store/eventlog.js'
+import { MemoryVault } from '../store/memory.js'
 import { generateKeys, loadKeys, saveKeys } from '../domain/mandate.js'
 import type { KeyMaterial } from '../domain/mandate.js'
 import { TeamplaneService } from '../domain/service.js'
@@ -15,6 +17,7 @@ export interface TeamplaneConfig {
   host: string
   port: number
   repoPath: string | null
+  keysDir?: string
   createdAt: string
 }
 
@@ -68,6 +71,13 @@ export interface InitOptions {
   host?: string
   port?: number
   force?: boolean
+  keysDir?: string
+}
+
+/** Signing keys live outside the workspace by default. */
+export function defaultKeysDir(root: string): string {
+  const id = sha256(resolve(root)).slice(0, 16)
+  return join(homedir(), '.teamplane', 'keys', id)
 }
 
 export interface InitResult {
@@ -87,7 +97,8 @@ export function initProject(options: InitOptions): InitResult {
   mkdirSync(dir, { recursive: true })
 
   const keys = generateKeys()
-  saveKeys(dir, keys)
+  const keysDir = options.keysDir ?? process.env.TEAMPLANE_KEYS_DIR ?? defaultKeysDir(root)
+  saveKeys(keysDir, keys)
 
   const config: TeamplaneConfig = {
     version: 1,
@@ -95,6 +106,7 @@ export function initProject(options: InitOptions): InitResult {
     host: options.host ?? '127.0.0.1',
     port: options.port ?? 7317,
     repoPath: root,
+    keysDir,
     createdAt: nowIso(),
   }
   writeConfig(root, config)
@@ -134,11 +146,16 @@ export interface LoadedWorkspace {
 export function loadWorkspace(rootOrCwd = process.cwd(), publicUrl?: string): LoadedWorkspace {
   const root = findRoot(rootOrCwd)
   const config = readConfig(root)
-  const keys = loadKeys(stateDir(root))
+  const keys = loadKeys(config.keysDir ?? join(stateDir(root), 'keys'))
   const log = EventLog.open(stateDir(root))
+  new MemoryVault(stateDir(root)).hydrate(log.state)
+  const allowedRepoRoots = process.env.TEAMPLANE_REPO_ROOTS
+    ? process.env.TEAMPLANE_REPO_ROOTS.split(delimiter).map((path) => path.trim()).filter(Boolean)
+    : undefined
   const service = new TeamplaneService(log, keys, {
     repoPath: config.repoPath ?? root,
     publicUrl: publicUrl ?? `http://${config.host}:${config.port}`,
+    allowedRepoRoots,
   })
   return { root, config, keys, log, service }
 }

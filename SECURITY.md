@@ -11,7 +11,7 @@ Include the version/commit, the reproduction, and the event log if relevant. Do 
 
 | Version | Supported |
 |---|---|
-| 0.3.x | yes, best effort |
+| 0.4.x | yes, best effort |
 
 Pre-1.0 means interfaces may change, but security fixes are backported to the latest minor.
 
@@ -33,8 +33,9 @@ What Teamplane enforces:
 - Verification commands are bound to a task at creation (or changed by an authorised principal); `submit` rejects commands supplied in the request body.
 - Memory reads are ACL-projected; `memory.written` events and SSE frames redact content for principals that cannot read the fragment.
 - Events are hash-chained and replay-verified. Snapshots are written as a cache but **never loaded**; startup always replays the chain.
+- SSE clients use a one-time ticket (`POST /v1/stream-ticket`); the `?token=` fallback is documented as legacy.
 
-The signing key lives at `.teamplane/keys/root.key` inside the workspace in 0.3.x. Anyone with filesystem access to the control-plane host can read it; `chmod`/`mode` is not an ACL on Windows. For strong isolation, run the control plane on a separate host or container and keep worktrees off that host.
+Signing keys live outside the workspace by default: `~/.teamplane/keys/<workspace-id>/root.key` (`TEAMPLANE_KEYS_DIR` overrides it; tests use a temp directory). Anyone with filesystem access to the control-plane host can still read the key, and `mode` is not an ACL on Windows. For strong isolation, run the control plane on a separate host or container and keep worktrees off that host.
 
 What it does **not** enforce:
 

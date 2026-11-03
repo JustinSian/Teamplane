@@ -111,12 +111,13 @@ test('HTTP surface: auth, policy, leases, memory, audit and MCP', async (t) => {
     }),
   })
   const ownerEvents = await call('/v1/events?types=memory.written')
-  assert.ok(ownerEvents.body.events.some((event) => event.data?.text?.includes('layoff list')))
+  assert.ok(ownerEvents.body.events.length >= 1)
+  assert.ok(ownerEvents.body.events.every((event) => event.data?.text === undefined))
   const bobEvents = await fetch(`${running.url}/v1/events?types=memory.written`, {
     headers: { authorization: `Bearer ${created.body.token}` },
   }).then((response) => response.json())
   assert.ok(bobEvents.events.length >= 1)
-  assert.ok(!bobEvents.events.some((event) => event.data?.text?.includes('layoff list')))
+  assert.ok(bobEvents.events.every((event) => event.data?.text === undefined))
   assert.ok(bobEvents.events.some((event) => event.data?.redacted === true))
 
   const audit = await call('/v1/audit/verify')
@@ -124,9 +125,12 @@ test('HTTP surface: auth, policy, leases, memory, audit and MCP', async (t) => {
   assert.equal(audit.body.ok, true)
 
   // SSE resumes from `since` (or Last-Event-ID) and frames carry the event id.
+  const ticket = await call('/v1/stream-ticket', { method: 'POST' })
+  assert.equal(ticket.status, 201)
+  assert.ok(ticket.body.ticket)
   const controller = new AbortController()
   try {
-    const stream = await fetch(`${running.url}/v1/stream?token=${init.token}&since=1&types=principal.created`, {
+    const stream = await fetch(`${running.url}/v1/stream?ticket=${encodeURIComponent(ticket.body.ticket)}&since=1&types=principal.created`, {
       signal: controller.signal,
     })
     const reader = stream.body.getReader()

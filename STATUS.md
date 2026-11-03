@@ -1,6 +1,6 @@
 # Status
 
-**Version:** 0.3.0 · **Date:** 2026-11-03 · **Maturity:** research preview
+**Version:** 0.4.0 · **Date:** 2026-11-03 · **Maturity:** research preview
 
 Teamplane is a working reference implementation of a multi-principal control plane for agent teams. It is not a finished product. This page is the honest matrix: what is shipped, what is partial, what is not built, and what has actually been measured.
 
@@ -33,13 +33,16 @@ Teamplane is a working reference implementation of a multi-principal control pla
 | TLS | **Not built** | bind to loopback or terminate TLS in front |
 | SSO / identity federation | **Not built** | external identities are provenance strings |
 | `maxWrites` | **Advisory** | recorded in the mandate but not enforced; do not rely on it |
-| Key isolation | **Not built** | signing key lives next to the workspace; host/container isolation is the operator's job |
+| Key isolation | **Shipped (default)** | signing keys live in `~/.teamplane/keys/<workspace-id>/`, not the repo; host/container isolation is still the operator's job |
+| Memory at rest | **Partial** | text lives in `.teamplane/memory/<id>.json` (0600), not in the event log; host filesystem access still reads it |
+| Repository roots | **Shipped** | `task.create` rejects paths outside the workspace or `TEAMPLANE_REPO_ROOTS` |
+| SSE tickets | **Shipped** | `POST /v1/stream-ticket` issues a 30 s single-use ticket; `?token=` remains as legacy |
 
 ## Evidence
 
 | Claim | Evidence |
 |---|---|
-| Coordination invariants hold | `npm test` — **31/31** passing |
+| Coordination invariants hold | `npm test` — **33/33** passing |
 | End-to-end behaviour | `npm run demo` — **16/16** steps, 2.7 s, report in `demo/out/` |
 | MCP works on both transports | `npm run mcp:smoke` — 10 tools, stdio + HTTP |
 | Package is installable | `npm pack` + install into a clean prefix; CLI runs |
@@ -53,7 +56,7 @@ Teamplane is a working reference implementation of a multi-principal control pla
 | Guard works in the real DSH pipeline | `test/integration/dsh-runtime.test.mjs` mounts `@deepseek-ai/dsh-tools` `ToolRuntime`, registers the guard, and asserts a denied write returns a tool error |
 | Lease trade-off is measured | `npm run bench`: 30/30 conflict recall, 30/30 false positives on clean same-file edits; the merge gate is 0/30 on those |
 | Security regressions are tested | approval-role forgery, body-supplied verify, private-memory event leak, forged snapshot, cross-task mandate and unauthenticated rate limiting each have a test |
-| Coverage | **76.4% lines / 64.8% branches / 73.2% functions** (Node experimental coverage) |
+| Coverage | **81.2% lines / 71.4% branches / 79.5% functions** (Node experimental coverage) |
 
 Reproduce:
 

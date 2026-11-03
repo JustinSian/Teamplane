@@ -8,7 +8,7 @@ From "working reference implementation" to "team product people star and use". E
 - Curated memory with ACLs, provenance, secret rejection, conflict events.
 - One-shot approvals, merge gate, hash-chained event log.
 - CLI, HTTP + SSE, console, MCP (stdio + HTTP), DSH guard (experimental).
-- Playground seed, executable demo, 31 tests, GitHub Action, Pages site.
+- Playground seed, executable demo, 33 tests, GitHub Action, Pages site.
 
 **Exit:** `npm test`, `npm run demo`, `npm run mcp:smoke` pass; a stranger can run the playground in under three minutes.
 

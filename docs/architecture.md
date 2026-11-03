@@ -153,15 +153,15 @@ The gate returns a result object with `ok`, never a bare error, so a caller can 
 
 ```
 .teamplane/
-  config.json          team name, host, port
-  keys/root.key        Ed25519 private key (0600)
-  keys/root.pub        public key
-  keys/root.kid        key id
+  config.json          team name, host, port, keysDir
   policy.json          editable copy; applied through the API
   events.jsonl         active segment
   archive/             rotated segments, events-<firstSeq>.jsonl
   snapshot.json        written but never trusted (safe to delete)
+  memory/              memory fragments (text, 0600)
 ```
+
+Signing keys are **not** under `.teamplane/`: the default is `~/.teamplane/keys/<workspace-id>/root.key`, so a task worktree cannot read them by relative path.
 
 The active segment rotates every 10,000 events (or `TEAMPLANE_SEGMENT_EVENTS`); the hash chain continues across segments, and replay/audit read archive + active in sequence order.
 
@@ -172,7 +172,7 @@ Startup: replay every event from genesis and verify every hash. A corrupt log re
 | Failure | Behaviour |
 |---|---|
 | Corrupt event line | refuses to start, names the sequence |
-| Snapshot stale | replayed from the event after its sequence |
+| Snapshot forged or stale | ignored; startup replays the chain from genesis |
 | Server crash mid-request | append happened or it did not; no partial state |
 | Lease holder dies | lease expires; fencing token moves on |
 | Approval requester disappears | approval expires; decision returns to `ask` |

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.0 — 2026-11-03
+
+The storage and isolation follow-up to 0.3.0.
+
+### Changed
+
+- **Signing keys moved outside the workspace.** Default: `~/.teamplane/keys/<workspace-id>/root.key`; `TEAMPLANE_KEYS_DIR` overrides. Legacy `.teamplane/keys/` is still readable. *(breaking for tooling that assumed the old path)*
+- **Memory text moved out of the event log.** `memory.written` stores metadata + `textHash`; the fragment lives in `.teamplane/memory/<id>.json` (0600) and is hydrated at startup. A restart test proves search still works. *(event-format change)*
+- **One-time SSE tickets**: `POST /v1/stream-ticket` returns a 30 s, single-use ticket; the console uses it. `?token=` remains as a documented legacy fallback.
+- **Repository roots**: `task.create` rejects `repoPath` outside the workspace or `TEAMPLANE_REPO_ROOTS`; `baseBranch` is validated.
+- Tests 31 → 33.
+
+### Known limits
+
+- Memory files are plaintext at rest; host access still reads them.
+- Keys are outside the repo but still readable by the control-plane host user.
+- `maxWrites` remains advisory.
+
 ## 0.3.0 — 2026-11-03
 
 Security release responding to an external review. **Breaking changes** are marked.

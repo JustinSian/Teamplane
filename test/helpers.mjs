@@ -28,7 +28,7 @@ export function makeWorkspace() {
   const repo = join(root, 'repo')
   mkdirSync(repo, { recursive: true })
   seedRepo(repo)
-  const init = initProject({ root: repo, name: 'test', owner: 'alice', port: 0 })
+  const init = initProject({ root: repo, name: 'test', owner: 'alice', port: 0, keysDir: join(root, 'keys') })
   const workspace = loadWorkspace(repo)
   return { root, repo, init, workspace }
 }

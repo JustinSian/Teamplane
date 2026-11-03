@@ -326,8 +326,8 @@ export function applyEvent(state: State, event: EventRecord): void {
       break
     }
     case 'memory.written': {
-      const fragment = data as MemoryFragment
-      state.memory.set(fragment.id, fragment)
+      const payload = data as Omit<MemoryFragment, 'text'> & { textHash?: string }
+      state.memory.set(payload.id, { ...payload, text: '' })
       break
     }
     case 'approval.requested': {

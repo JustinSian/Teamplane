@@ -20,6 +20,10 @@ test('multi-principal lifecycle: mandates, leases, memory, approvals and submit'
   const bobActor = service.authenticate(bob.token)
   const carolActor = service.authenticate(carol.token)
 
+  assert.throws(
+    () => service.createTask(alice, { title: 'outside', repoPath: join(root, 'outside'), baseBranch: 'main' }),
+    (error) => error instanceof TeamplaneError && error.status === 403,
+  )
   const task = service.createTask(alice, { title: 'auth rotation', repoPath: repo, baseBranch: 'main', verify: ['node -e "process.exit(1)"'] })
   const bobMandate = service.issueMandate(alice, {
     subject: bob.principal.id,

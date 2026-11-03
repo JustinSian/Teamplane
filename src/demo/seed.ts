@@ -30,7 +30,7 @@ export async function seedPlayground(options: PlaygroundOptions = {}): Promise<P
   mkdirSync(repo, { recursive: true })
   seedRepo(repo)
 
-  const init = initProject({ root: repo, name: 'acme', owner: 'alice', port: options.port ?? 0 })
+  const init = initProject({ root: repo, name: 'acme', owner: 'alice', port: options.port ?? 0, keysDir: join(root, 'keys') })
   const workspace = loadWorkspace(repo)
   const running = await startServer(workspace, { port: options.port ?? 0, host: options.host, quiet: true })
   workspace.service.options.publicUrl = running.url

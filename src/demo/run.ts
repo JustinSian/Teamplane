@@ -47,7 +47,7 @@ export async function runDemo(options: DemoOptions = {}): Promise<number> {
     mkdirSync(repo, { recursive: true })
     seedRepo(repo)
 
-    const init = initProject({ root: repo, name: 'acme', owner: 'alice', port: 0 })
+    const init = initProject({ root: repo, name: 'acme', owner: 'alice', port: 0, keysDir: join(root, 'keys') })
     workspace = loadWorkspace(repo)
     running = await startServer(workspace, { port: 0, quiet: true })
     workspace.service.options.publicUrl = running.url

@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { timingSafeEqual } from 'node:crypto'
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve, sep } from 'node:path'
 import type {
   Approval,
   AuthenticatedPrincipal,
@@ -44,10 +44,12 @@ import type { KeyMaterial } from './mandate.js'
 import { deriveClaims, signMandate, verifyMandate } from './mandate.js'
 import type { EventLog } from '../store/eventlog.js'
 import { activeLeases } from '../store/eventlog.js'
+import { MemoryVault } from '../store/memory.js'
 
 export interface ServiceOptions {
   repoPath?: string
   publicUrl?: string
+  allowedRepoRoots?: string[]
   now?: () => string
 }
 
@@ -108,11 +110,13 @@ export class TeamplaneService {
   readonly log: EventLog
   readonly keys: KeyMaterial
   readonly options: ServiceOptions
+  readonly vault: MemoryVault
 
   constructor(log: EventLog, keys: KeyMaterial, options: ServiceOptions = {}) {
     this.log = log
     this.keys = keys
     this.options = options
+    this.vault = new MemoryVault(log.dir)
   }
 
   get state() {
@@ -304,8 +308,16 @@ export class TeamplaneService {
   ): Task {
     this.authorizeOrThrow(actor, 'task.create', 'task:*')
     if (!input.title || input.title.trim() === '') fail('invalid_title', 'title is required', 422)
-    const repoPath = input.repoPath ?? this.options.repoPath
+    const repoPath = resolve(input.repoPath ?? this.options.repoPath ?? '')
     if (!repoPath) fail('repo_required', 'A repository path is required (--repo).', 422)
+    const roots = this.options.allowedRepoRoots ?? (this.options.repoPath ? [resolve(this.options.repoPath)] : [])
+    if (roots.length > 0 && !roots.some((root) => repoPath === root || repoPath.startsWith(`${root}${sep}`))) {
+      fail('repo_not_allowed', `Repository ${repoPath} is outside the allowed roots.`, 403, { allowed: roots })
+    }
+    const baseBranch = input.baseBranch ?? 'main'
+    if (!/^[A-Za-z0-9._/-]+$/.test(baseBranch) || baseBranch.includes('..')) {
+      fail('invalid_branch', `Invalid base branch: ${baseBranch}`, 422)
+    }
     const verify = this.normalizeVerify(input.verify ?? [])
     const taskId = id('tsk')
     const task: Task = {
@@ -314,7 +326,7 @@ export class TeamplaneService {
       requester: actor.principal.id,
       assignee: input.assignee ?? null,
       repoPath,
-      baseBranch: input.baseBranch ?? 'main',
+      baseBranch,
       branch: `tp/${taskId}`,
       worktree: null,
       mandateId: null,
@@ -529,7 +541,10 @@ export class TeamplaneService {
       createdAt: this.now(),
       supersedes: input.supersedes ?? null,
     }
-    this.log.append('memory.written', actor.principal.id, fragment as unknown as JsonValue)
+    this.vault.save(fragment)
+    const { text, ...metadata } = fragment
+    this.log.append('memory.written', actor.principal.id, { ...metadata, textHash: sha256(text) } as unknown as JsonValue)
+    this.state.memory.set(fragment.id, fragment)
 
     for (const existing of this.state.memory.values()) {
       if (existing.id === fragment.id) continue

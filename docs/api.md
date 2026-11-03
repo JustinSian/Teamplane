@@ -65,7 +65,8 @@ Principal tokens are printed once by `init` / `user add`, stored only as SHA-256
 | POST | `/v1/approvals/:id/resolve` | approve/reject |
 | POST | `/v1/approvals/:id/consume` | manual consumption; `/v1/authorize` consumes by default |
 | GET | `/v1/events?since=&types=` | structured events |
-| GET | `/v1/stream?token=&types=` | SSE stream |
+| POST | `/v1/stream-ticket` | one-time SSE ticket (30 s, single use) |
+| GET | `/v1/stream?ticket=&types=` | SSE stream |
 | GET | `/v1/audit/verify` | hash-chain verification |
 | GET | `/v1/state` | console summary |
 | POST | `/mcp` | MCP over Streamable HTTP |
@@ -169,7 +170,7 @@ data: {"seq":42,"type":"lease.denied",...}
 
 Each `event` frame carries `id: <seq>`; a reconnecting client sends `Last-Event-ID` and the server replays the events after it. A custom client can pass `?since=<seq>` instead.
 
-`EventSource` cannot set an `Authorization` header, so the stream accepts `?token=`. Use it only over loopback or TLS; the token can appear in proxy logs. Other clients should send the header instead.
+`EventSource` cannot set an `Authorization` header. Fetch a one-time ticket with `POST /v1/stream-ticket`, then connect to `/v1/stream?ticket=...`; the ticket expires after 30 seconds and is consumed on first use. The legacy `?token=` fallback still works but leaks the principal token into proxy logs — prefer the ticket.
 
 ## Rate limits
 

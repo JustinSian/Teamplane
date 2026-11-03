@@ -5,6 +5,7 @@ const state = {
   source: null,
   timer: null,
   noStream: false,
+  reconnectTimer: null,
   policyDirty: false,
   principals: [],
   mandates: [],
@@ -66,7 +67,7 @@ async function connect() {
     $('app').hidden = false
     $('principal').textContent = `${me.principal.display} · ${me.roles.join(', ')}`
     await refresh()
-    startStream()
+    void startStream()
     if (state.timer) clearInterval(state.timer)
     state.timer = setInterval(refresh, 5000)
   } catch (error) {
@@ -313,10 +314,21 @@ async function createTask(event) {
   }
 }
 
-function startStream() {
+async function startStream() {
   if (state.noStream) return
+  if (state.reconnectTimer) {
+    clearTimeout(state.reconnectTimer)
+    state.reconnectTimer = null
+  }
   if (state.source) state.source.close()
-  const source = new EventSource(`/v1/stream?token=${encodeURIComponent(state.token)}`)
+  let url = `/v1/stream?token=${encodeURIComponent(state.token)}`
+  try {
+    const ticket = await api('/v1/stream-ticket', { method: 'POST' })
+    url = `/v1/stream?ticket=${encodeURIComponent(ticket.ticket)}`
+  } catch {
+    // Fall back to the legacy query token if the control plane is older.
+  }
+  const source = new EventSource(url)
   state.source = source
   source.addEventListener('hello', () => {
     $('live-dot').className = 'dot on'
@@ -338,6 +350,11 @@ function startStream() {
   source.onerror = () => {
     $('live-dot').className = 'dot off'
     $('live-label').textContent = 'reconnecting'
+    source.close()
+    if (state.reconnectTimer) clearTimeout(state.reconnectTimer)
+    state.reconnectTimer = setTimeout(() => {
+      void startStream()
+    }, 2000)
   }
 }
 

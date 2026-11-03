@@ -3,7 +3,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs'
 import { extname, isAbsolute, join, normalize, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { AuthenticatedPrincipal, MandateClaims, MemoryFragment, Policy, Role } from '../core/types.js'
-import { TeamplaneError, fail, fail as raise, nowIso, parseJson } from '../core/util.js'
+import { TeamplaneError, fail, fail as raise, nowIso, parseJson, randomToken } from '../core/util.js'
 import type { LoadedWorkspace } from '../core/config.js'
 import { handleMcpHttp } from '../mcp/http.js'
 import { rateLimiterFromEnv } from './ratelimit.js'
@@ -33,6 +33,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
   const port = options.port ?? workspace.config.port
   const clients = new Set<{ res: ServerResponse; types: string[]; actor: AuthenticatedPrincipal }>()
   const limiter = rateLimiterFromEnv()
+  const streamTickets = new Map<string, { actor: AuthenticatedPrincipal; expiresAt: number }>()
   const sweep = setInterval(() => {
     try {
       workspace.service.expireLeases()
@@ -74,9 +75,18 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
       await handleMcpHttp(req, res, { baseUrl, token: token!, mandate: rawMandate })
       return
     }
-    if (path.startsWith('/v1/stream')) {
-      const token = url.searchParams.get('token') ?? bearer(req)
-      const actor = workspace.service.authenticate(token)
+    if (path === '/v1/stream') {
+      const ticket = url.searchParams.get('ticket')
+      let actor: AuthenticatedPrincipal
+      if (ticket) {
+        const entry = streamTickets.get(ticket)
+        streamTickets.delete(ticket)
+        if (!entry || entry.expiresAt < Date.now()) fail('invalid_stream_ticket', 'The stream ticket is missing or expired.', 401)
+        actor = entry.actor
+      } else {
+        const token = url.searchParams.get('token') ?? bearer(req)
+        actor = workspace.service.authenticate(token)
+      }
       const types = (url.searchParams.get('types') ?? '').split(',').map((item) => item.trim()).filter(Boolean)
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
@@ -390,6 +400,15 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
       sendJson(res, 200, service.audit())
       return
     }
+    if (method === 'POST' && path === '/v1/stream-ticket') {
+      const now = Date.now()
+      for (const [key, entry] of streamTickets) if (entry.expiresAt < now) streamTickets.delete(key)
+      const ticket = randomToken('tkt')
+      streamTickets.set(ticket, { actor: ctx.actor, expiresAt: now + 30_000 })
+      sendJson(res, 201, { ticket, expiresAt: new Date(now + 30_000).toISOString() })
+      return
+    }
+
     if (method === 'GET' && path === '/v1/state') {
       sendJson(res, 200, {
         name: workspace.config.name,

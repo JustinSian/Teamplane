@@ -19,18 +19,20 @@ export function generateKeys(): KeyMaterial {
 }
 
 export function saveKeys(dir: string, keys: KeyMaterial): void {
-  mkdirSync(join(dir, 'keys'), { recursive: true, mode: 0o700 })
-  writeFileSync(join(dir, 'keys', 'root.key'), keys.privateKeyPem, { mode: 0o600 })
-  writeFileSync(join(dir, 'keys', 'root.pub'), keys.publicKeyPem, { mode: 0o644 })
-  writeFileSync(join(dir, 'keys', 'root.kid'), keys.kid, { mode: 0o644 })
+  mkdirSync(dir, { recursive: true, mode: 0o700 })
+  writeFileSync(join(dir, 'root.key'), keys.privateKeyPem, { mode: 0o600 })
+  writeFileSync(join(dir, 'root.pub'), keys.publicKeyPem, { mode: 0o644 })
+  writeFileSync(join(dir, 'root.kid'), keys.kid, { mode: 0o644 })
 }
 
 export function loadKeys(dir: string): KeyMaterial {
-  const keyPath = join(dir, 'keys', 'root.key')
+  // Older workspaces stored the key under `<dir>/keys/`; accept both layouts.
+  const base = existsSync(join(dir, 'root.key')) || !existsSync(join(dir, 'keys', 'root.key')) ? dir : join(dir, 'keys')
+  const keyPath = join(base, 'root.key')
   if (!existsSync(keyPath)) fail('keys_missing', `No signing key at ${keyPath}. Run "teamplane init" first.`, 422)
   const privateKeyPem = readFileSync(keyPath, 'utf8')
-  const publicKeyPem = readFileSync(join(dir, 'keys', 'root.pub'), 'utf8')
-  const kid = readFileSync(join(dir, 'keys', 'root.kid'), 'utf8').trim()
+  const publicKeyPem = readFileSync(join(base, 'root.pub'), 'utf8')
+  const kid = readFileSync(join(base, 'root.kid'), 'utf8').trim()
   return { kid, privateKeyPem, publicKeyPem }
 }
 
