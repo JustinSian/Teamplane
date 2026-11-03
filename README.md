@@ -120,7 +120,7 @@ Reads are projected through ACLs: `private`, `team`, or `role:<role>`. Two contr
 ## Quickstart
 
 ```bash
-npm install -g teamplane      # or: npm install && npm run build && npm link
+npm install && npm run build && npm link   # from this repository
 
 mkdir acme && cd acme
 git init -b main && git commit --allow-empty -m "seed"

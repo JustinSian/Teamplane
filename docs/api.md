@@ -161,6 +161,8 @@ event: event
 data: {"seq":42,"type":"lease.denied",...}
 ```
 
+`EventSource` cannot set an `Authorization` header, so the stream accepts `?token=`. Use it only over loopback or TLS; the token can appear in proxy logs. Other clients should send the header instead.
+
 ## Idempotency and concurrency
 
 - Appends are serialised by the single-writer event log.

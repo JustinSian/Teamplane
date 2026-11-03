@@ -114,7 +114,7 @@ file:src/auth.ts     dir:src/auth     branch:main     memory:team/auth
 ## 快速开始
 
 ```bash
-npm install -g teamplane      # 或 npm install && npm run build && npm link
+npm install && npm run build && npm link   # 在本仓库目录执行
 
 mkdir acme && cd acme
 git init -b main && git commit --allow-empty -m "seed"
