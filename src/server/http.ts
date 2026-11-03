@@ -421,6 +421,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
         leases: [...service.state.leases.values()].filter((lease) => lease.endedAt === null),
         approvals: [...service.state.approvals.values()].filter((approval) => approval.status === 'pending'),
         events: service.state.lastSeq,
+        demo: Boolean(workspace.config.demo),
         next: service.nextStep(),
       })
       return

@@ -27,6 +27,7 @@
           <img src="/logo.svg" alt="" width="26" height="26" />
           <strong>Teamplane</strong>
           <span id="team-name" class="muted"></span>
+          <span id="demo-badge" class="badge demo" hidden>demo data</span>
         </div>
         <nav class="tabs" role="tablist">
           <button class="tab active" data-tab="overview" role="tab">Overview</button>
@@ -35,6 +36,7 @@
           <button class="tab" data-tab="memory" role="tab">Memory</button>
           <button class="tab" data-tab="policy" role="tab">Policy</button>
           <button class="tab" data-tab="audit" role="tab">Audit</button>
+          <button class="tab" data-tab="connect" role="tab">Connect</button>
         </nav>
         <div class="status"><span id="live-dot" class="dot"></span><span id="live-label">connecting</span></div>
       </header>
@@ -51,6 +53,10 @@
             </div>
             <button id="copy-next" class="ghost" type="button" hidden>Copy</button>
           </section>
+          <section id="demo-tip" class="demo-tip" hidden>
+            <strong>Seeded demo</strong>
+            <span>This is not your repository. Try: <b>Approve</b> the request → watch <b>Live events</b> → open <b>Audit</b>.</span>
+          </section>
           <div class="cards">
             <div class="card"><span class="card-label">Tasks</span><span id="stat-tasks" class="card-value">–</span></div>
             <div class="card"><span class="card-label">Active leases</span><span id="stat-leases" class="card-value">–</span></div>
@@ -66,7 +72,10 @@
                   a teammate, a task, and a task-scoped mandate.
                 </p>
               </div>
-              <button id="copy-onboarding" class="ghost" type="button">Copy commands</button>
+              <div class="row">
+                <button id="starter-task" type="button">Create starter task</button>
+                <button id="copy-onboarding" class="ghost" type="button">Copy commands</button>
+              </div>
             </div>
             <pre id="onboarding-commands" class="onboarding-code">teamplane user add --name bob --role maintainer
 teamplane task create --title "first task" --repo . --verify "npm test"
@@ -168,6 +177,25 @@ teamplane task start TASK_ID --id MANDATE_ID</pre>
         <section id="tab-audit" class="panel">
           <button id="verify">Verify hash chain</button>
           <pre id="audit-result" class="code"></pre>
+        </section>
+
+        <section id="tab-connect" class="panel">
+          <section class="block">
+            <h2>Connect an agent</h2>
+            <p class="muted">
+              Add this row to your DSH profile's <code>cordis.patch.yml</code>, then restart DSH. The
+              <code>teamplane</code> command must be on PATH (for example after <code>npm link</code>).
+            </p>
+            <pre id="connect-config" class="onboarding-code"></pre>
+            <div class="row">
+              <button id="copy-connect" class="ghost" type="button">Copy config</button>
+              <span id="connect-status" class="muted"></span>
+            </div>
+            <p class="muted">
+              The agent gets the <code>tp_*</code> tools. For shell commands, install the host guard;
+              <code>teamplane task launch &lt;id&gt; -- dsh</code> starts DSH in the task worktree.
+            </p>
+          </section>
         </section>
       </main>
 

@@ -1,4 +1,36 @@
 const $ = (id) => document.getElementById(id)
+
+const EVENT_LABELS = {
+  'policy.updated': 'policy updated',
+  'principal.created': 'principal created',
+  'principal.disabled': 'principal disabled',
+  'role.granted': 'role granted',
+  'mandate.issued': 'mandate issued',
+  'mandate.revoked': 'mandate revoked',
+  'task.created': 'task created',
+  'task.verify': 'verification changed',
+  'task.started': 'task started',
+  'task.launched': 'agent launched',
+  'task.status': 'task status',
+  'lease.acquired': 'file locked',
+  'lease.renewed': 'lock renewed',
+  'lease.released': 'lock released',
+  'memory.written': 'memory written',
+  'memory.conflict': 'memory conflict',
+  'approval.requested': 'approval requested',
+  'approval.resolved': 'approval resolved',
+  'approval.consumed': 'approval used',
+  'write.authorized': 'write allowed',
+  'submit.rejected': 'submit rejected',
+  'submit.verified': 'submit verified',
+  'submit.merged': 'merged',
+  'decision.denied': 'decision denied',
+}
+
+function eventLabel(type) {
+  return EVENT_LABELS[type] ?? type
+}
+
 const state = {
   token: localStorage.getItem('teamplane.token') ?? '',
   events: [],
@@ -84,6 +116,8 @@ async function refresh() {
     $('stat-leases').textContent = String(snapshot.leases?.length ?? 0)
     $('stat-approvals').textContent = String(snapshot.approvals?.length ?? 0)
     $('stat-events').textContent = String(snapshot.events ?? 0)
+    $('demo-badge').hidden = !snapshot.demo
+    $('demo-tip').hidden = !snapshot.demo
     const empty = (snapshot.tasks?.length ?? 0) === 0 && (snapshot.leases?.length ?? 0) === 0 && (snapshot.approvals?.length ?? 0) === 0
     $('onboarding').hidden = !empty
     const next = snapshot.next
@@ -325,6 +359,41 @@ async function createTask(event) {
   }
 }
 
+async function createStarterTask() {
+  const button = $('starter-task')
+  button.disabled = true
+  button.textContent = 'Creating…'
+  try {
+    await api('/v1/tasks', {
+      method: 'POST',
+      body: JSON.stringify({ title: 'First task', verify: ['node -e "process.exit(0)"'] }),
+    })
+    await refresh()
+  } catch (error) {
+    $('live-label').textContent = error.message
+  } finally {
+    button.disabled = false
+    button.textContent = 'Create starter task'
+  }
+}
+
+function renderConnect() {
+  const config = [
+    '- id: mcp-teamplane',
+    "  name: '@deepseek-ai/dsh-mcp-client'",
+    '  config:',
+    '    serverName: teamplane',
+    '    transport: stdio',
+    '    command: teamplane',
+    "    args: ['mcp']",
+    '    failOnStartupError: false',
+    '    env:',
+    `      TEAMPLANE_URL: ${location.origin}`,
+    '      TEAMPLANE_TOKEN: YOUR_PRINCIPAL_TOKEN',
+  ].join('\n')
+  $('connect-config').textContent = config
+}
+
 async function startStream() {
   if (state.noStream) return
   if (state.reconnectTimer) {
@@ -374,7 +443,8 @@ function renderFeed() {
   feed.replaceChildren()
   for (const event of state.events) {
     const row = element('div', 'feed-row')
-    row.append(element('span', 'type', event.type))
+    row.title = event.type
+    row.append(element('span', 'type', eventLabel(event.type)))
     row.append(element('span', '', short(event.actor)))
     row.append(element('span', 'at', when(event.at)))
     feed.append(row)
@@ -469,6 +539,20 @@ function boot() {
   $('token').addEventListener('keydown', (event) => {
     if (event.key === 'Enter') connect()
   })
+  $('starter-task').addEventListener('click', createStarterTask)
+  $('copy-connect').addEventListener('click', async () => {
+    const button = $('copy-connect')
+    try {
+      await navigator.clipboard.writeText($('connect-config').textContent)
+      $('connect-status').textContent = 'Copied'
+      setTimeout(() => {
+        $('connect-status').textContent = ''
+      }, 1500)
+    } catch {
+      $('connect-status').textContent = 'Select and copy'
+    }
+  })
+  renderConnect()
   $('copy-next').addEventListener('click', async () => {
     const button = $('copy-next')
     try {

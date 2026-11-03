@@ -18,6 +18,7 @@ export interface TeamplaneConfig {
   port: number
   repoPath: string | null
   keysDir?: string
+  demo?: boolean
   createdAt: string
 }
 

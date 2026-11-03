@@ -109,6 +109,23 @@ main { padding-top: 22px; }
 }
 .card-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
 .card-value { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.badge.demo {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 40%, var(--border));
+}
+.demo-tip {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  background: rgba(255, 204, 102, 0.06);
+  border: 1px solid color-mix(in srgb, var(--warn) 25%, var(--border));
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.demo-tip strong { color: var(--warn); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
 .next {
   display: flex;
   align-items: flex-start;

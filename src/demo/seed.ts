@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { initProject, loadWorkspace, type LoadedWorkspace } from '../core/config.js'
+import { initProject, loadWorkspace, readConfig, writeConfig, type LoadedWorkspace } from '../core/config.js'
 import { startServer, type RunningServer } from '../server/http.js'
 import { seedRepo } from './repo.js'
 
@@ -31,6 +31,7 @@ export async function seedPlayground(options: PlaygroundOptions = {}): Promise<P
   seedRepo(repo)
 
   const init = initProject({ root: repo, name: 'acme', owner: 'alice', port: options.port ?? 0, keysDir: join(root, 'keys') })
+  writeConfig(repo, { ...readConfig(repo), demo: true })
   const workspace = loadWorkspace(repo)
   const running = await startServer(workspace, { port: options.port ?? 0, host: options.host, quiet: true })
   workspace.service.options.publicUrl = running.url

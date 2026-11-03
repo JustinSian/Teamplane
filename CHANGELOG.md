@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.2 — 2026-11-03
+
+### Added
+
+- The console now marks seeded playground data with a **demo data** badge and a short “Seeded demo” tip, so it cannot be mistaken for the user's repository.
+- A **Connect** tab renders a copy-ready DSH MCP client row (`mcp-teamplane`) using the current console origin and the `tp_*` tool note.
+- Event rows use human labels (`file locked`, `approval used`, `write allowed`, …) while keeping the raw event type in the row title.
+- The first-run panel has a **Create starter task** button; it creates a task with a trivial task-bound verify command so the next-step banner advances without copy/paste.
+
 ## 0.6.1 — 2026-11-03
 
 ### Added
