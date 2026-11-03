@@ -65,7 +65,7 @@ A seeded team appears: four tasks, two live leases, one pending approval, a memo
 |---|---|---|
 | CLI | setup, scripted flows, CI | shipped |
 | HTTP + SSE | the only authority; every client uses it | shipped |
-| Web console | human review, approvals, tasks | partial |
+| Web console | human review, approvals, tasks, mandates, policy | shipped (core) |
 | MCP | agent tools (DSH, Claude Code, Cursor, Codex) | shipped |
 | GitHub Action | audit verification in CI | shipped |
 | DSH host guard | local write enforcement | experimental |

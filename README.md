@@ -160,7 +160,7 @@ A shared control plane is the same row with `transport: streamable-http` and `ur
 
 ```yaml
 - name: Verify the Teamplane event log
-  uses: JustinSian/Teamplane@v0.2.2
+  uses: JustinSian/Teamplane@v0.2.3
   with:
     control-plane-url: ${{ vars.TEAMPLANE_URL }}
     token: ${{ secrets.TEAMPLANE_TOKEN }}
@@ -217,7 +217,7 @@ Related work that shaped this: Collaborative Memory (ICML'25), MERGEGYM, ScopeGa
 
 ## Status
 
-`0.2.2` — **research preview**, single node, pre-1.0. The event log is O(n) on startup; snapshots mitigate, rotation is on the roadmap. Interfaces may change before `1.0`.
+`0.2.3` — **research preview**, single node, pre-1.0. The event log is O(n) on startup; snapshots mitigate, rotation is on the roadmap. Interfaces may change before `1.0`.
 
 If you build on it, pin a commit and read [SECURITY.md](SECURITY.md) and [STATUS.md](STATUS.md).
 

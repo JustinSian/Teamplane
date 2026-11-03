@@ -61,6 +61,23 @@
         </section>
 
         <section id="tab-tasks" class="panel">
+          <section class="block" style="margin-bottom: 16px">
+            <h2>Issue a mandate</h2>
+            <form id="mandate-form" class="grid-form">
+              <label>Subject<select id="mandate-subject"></select></label>
+              <label>Task<select id="mandate-task"></select></label>
+              <label>Paths (comma separated)<input id="mandate-paths" placeholder="src/auth.ts, tests/auth" /></label>
+              <label>TTL
+                <select id="mandate-ttl">
+                  <option value="900">15 minutes</option>
+                  <option value="3600" selected>1 hour</option>
+                  <option value="28800">8 hours</option>
+                </select>
+              </label>
+              <button type="submit">Issue mandate</button>
+            </form>
+            <pre id="mandate-result" class="code" hidden></pre>
+          </section>
           <form id="task-form" class="search">
             <input id="task-title" placeholder="New task title, e.g. rotate refresh tokens" />
             <input id="task-repo" placeholder="Repository path (optional)" />
@@ -80,8 +97,12 @@
         <section id="tab-policy" class="panel">
           <div class="grid">
             <section class="block">
-              <h2>Policy</h2>
-              <pre id="policy-json" class="code"></pre>
+              <h2>Policy editor</h2>
+              <textarea id="policy-editor" class="code editor" spellcheck="false"></textarea>
+              <div class="row">
+                <button id="policy-save">Apply policy</button>
+                <span id="policy-status" class="muted"></span>
+              </div>
             </section>
             <section class="block">
               <h2>Explain a decision</h2>

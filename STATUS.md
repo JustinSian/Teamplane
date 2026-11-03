@@ -1,6 +1,6 @@
 # Status
 
-**Version:** 0.2.2 · **Date:** 2026-11-03 · **Maturity:** research preview
+**Version:** 0.2.3 · **Date:** 2026-11-03 · **Maturity:** research preview
 
 Teamplane is a working reference implementation of a multi-principal control plane for agent teams. It is not a finished product. This page is the honest matrix: what is shipped, what is partial, what is not built, and what has actually been measured.
 
@@ -18,7 +18,7 @@ Teamplane is a working reference implementation of a multi-principal control pla
 | Audit log | **Shipped** | append-only JSONL, SHA-256 chain, replay verification, snapshots |
 | CLI | **Shipped** | init, principals, mandates, tasks, leases, memory, approvals, submit, audit |
 | HTTP + SSE | **Shipped** | REST + live events + static console |
-| Web console | **Partial** | read views, approve/reject, create task; no mandate issuance or policy editing |
+| Web console | **Shipped (core admin)** | views, approve/reject, create task, issue mandate, apply policy; no revoke or task-start buttons yet |
 | MCP | **Shipped** | stdio + Streamable HTTP, 10 tools |
 | DSH host guard | **Verified at the pipeline level** | runs inside the real `@deepseek-ai/dsh-tools` `ToolRuntime` pipeline; a denied write returns a tool error. Not yet exercised inside a full DSH session. |
 | GitHub Action | **Shipped** | audit verification composite action |

@@ -5,6 +5,8 @@ const state = {
   source: null,
   timer: null,
   noStream: false,
+  policyDirty: false,
+  principals: [],
 }
 
 async function api(path, options = {}) {
@@ -83,8 +85,20 @@ async function refresh() {
     renderTasks(snapshot.tasks ?? [])
     renderApprovals(snapshot.approvals ?? [])
     if (!$('task-repo').value && snapshot.tasks?.[0]?.repoPath) $('task-repo').placeholder = snapshot.tasks[0].repoPath
+
+    const principals = await api('/v1/principals')
+    state.principals = principals.principals ?? []
+    fillSelect(
+      $('mandate-subject'),
+      state.principals.map((principal) => ({ value: principal.id, label: `${principal.display} (${principal.id})` })),
+    )
+    fillSelect(
+      $('mandate-task'),
+      (snapshot.tasks ?? []).map((task) => ({ value: task.id, label: `${task.id} — ${task.title}` })),
+    )
+
     const policy = await api('/v1/policy')
-    $('policy-json').textContent = JSON.stringify(policy, null, 2)
+    if (!state.policyDirty) $('policy-editor').value = JSON.stringify(policy, null, 2)
     if (state.noStream) {
       const feed = await api('/v1/events?since=0')
       state.events = (feed.events ?? []).slice(-12).reverse()
@@ -94,6 +108,61 @@ async function refresh() {
     }
   } catch (error) {
     $('live-label').textContent = error.message
+  }
+}
+
+function fillSelect(select, items) {
+  const previous = select.value
+  select.replaceChildren(
+    ...items.map((item) => {
+      const option = document.createElement('option')
+      option.value = item.value
+      option.textContent = item.label
+      return option
+    }),
+  )
+  if (items.some((item) => item.value === previous)) select.value = previous
+}
+
+async function issueMandate(event) {
+  event.preventDefault()
+  const paths = $('mandate-paths')
+    .value.split(',')
+    .map((path) => path.trim())
+    .filter(Boolean)
+  const result = $('mandate-result')
+  try {
+    if (paths.length === 0) throw new Error('at least one path is required')
+    const issued = await api('/v1/mandates', {
+      method: 'POST',
+      body: JSON.stringify({
+        subject: $('mandate-subject').value,
+        task: $('mandate-task').value,
+        paths,
+        ttlSeconds: Number($('mandate-ttl').value),
+      }),
+    })
+    result.hidden = false
+    result.textContent = `mandate ${issued.mandate.id}
+subject ${issued.mandate.claims.subject}
+paths ${paths.join(', ')}
+token ${issued.token}`
+    await refresh()
+  } catch (error) {
+    result.hidden = false
+    result.textContent = error.message
+  }
+}
+
+async function savePolicy() {
+  const status = $('policy-status')
+  try {
+    const policy = JSON.parse($('policy-editor').value)
+    const saved = await api('/v1/policy', { method: 'PUT', body: JSON.stringify(policy) })
+    state.policyDirty = false
+    status.textContent = `applied version ${saved.version}`
+  } catch (error) {
+    status.textContent = error.message
   }
 }
 
@@ -120,7 +189,9 @@ function renderTasks(tasks) {
     const statusCell = element('td')
     statusCell.append(badge(task.status, task.status === 'merged' ? 'ok' : task.status === 'active' ? 'warn' : ''))
     const mandateCell = element('td', 'mono', short(task.mandateId ?? '—'))
-    const worktreeCell = element('td', 'mono', task.worktree ? short(task.worktree) : '—')
+    const worktreeName = task.worktree ? String(task.worktree).split(/[\\/]/).filter(Boolean).pop() : null
+    const worktreeCell = element('td', 'mono', worktreeName ?? '—')
+    if (task.worktree) worktreeCell.title = String(task.worktree)
     tr.append(idCell, titleCell, statusCell, mandateCell, worktreeCell)
     tableBody.append(tr)
   }
@@ -295,6 +366,11 @@ function boot() {
     history.replaceState({}, '', location.pathname)
   }
   $('task-form').addEventListener('submit', createTask)
+  $('mandate-form').addEventListener('submit', issueMandate)
+  $('policy-save').addEventListener('click', savePolicy)
+  $('policy-editor').addEventListener('input', () => {
+    state.policyDirty = true
+  })
   $('connect').addEventListener('click', connect)
   $('token').addEventListener('keydown', (event) => {
     if (event.key === 'Enter') connect()
@@ -302,6 +378,11 @@ function boot() {
   $('memory-form').addEventListener('submit', searchMemory)
   $('explain-form').addEventListener('submit', explain)
   $('verify').addEventListener('click', verifyAudit)
+  const initialTab = params.get('tab')
+  if (initialTab) {
+    const tab = document.querySelector(`.tab[data-tab="${initialTab}"]`)
+    if (tab) tab.click()
+  }
   if (state.token) {
     $('token').value = state.token
     connect()

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.3 — 2026-11-03
+
+### Added
+
+- **Console administration**: issue a mandate (subject, task, paths, TTL) and apply a policy revision from the web console. Both use the same API and authorisation as the CLI.
+- **Console deep links**: `?tab=tasks`, `?tab=policy`, `?tab=memory`, `?tab=audit` open a tab directly; useful for screenshots and bookmarks.
+- Real screenshots for the tasks/mandate and policy tabs (`docs/assets/console-tasks.png`, `docs/assets/console-policy.png`).
+
+### Fixed
+
+- The policy editor text was unreadable (inherited textarea colour); it now uses the theme text colour.
+- The worktree column shows the task directory name instead of a truncated absolute path.
+
 ## 0.2.2 — 2026-11-03
 
 ### Verified
