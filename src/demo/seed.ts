@@ -112,6 +112,7 @@ export async function seedPlayground(options: PlaygroundOptions = {}): Promise<P
     resource: 'branch:main',
     mandateId: mandateB.record.id,
     ttlSeconds: 1800,
+    fields: { request: { force: true } },
   })
 
   return {

@@ -18,7 +18,7 @@ const mandate = {
   issuer: 'usr_alice',
   subject: 'usr_agent',
   task: 'tsk_1',
-  scope: { paths: ['src/auth.ts'], actions: ['fs.read', 'fs.write'], branches: ['tp/tsk_1'], memory: ['team/auth'] },
+  scope: { paths: ['src/auth.ts'], actions: ['fs.read', 'fs.write', 'task.submit'], branches: ['tp/tsk_1'], memory: ['team/auth'] },
   limits: { maxWrites: 10, expiresAt: '2999-01-01T00:00:00.000Z' },
   policyVersion: 1,
   iat: '2026-01-01T00:00:00.000Z',
@@ -93,6 +93,9 @@ test('conditions are evaluated deterministically', () => {
 
 test('mandate scope is strict about paths, actions, branches and memory', () => {
   assert.equal(mandateAllows(mandate, 'fs.write', 'file:src/auth.ts').ok, true)
+  assert.equal(mandateAllows(mandate, 'task.submit', 'task:tsk_1').ok, true)
+  assert.equal(mandateAllows(mandate, 'task.submit', 'task:tsk_OTHER').ok, false)
+  assert.equal(mandateAllows(mandate, 'unknown.action', 'unknown:thing').ok, false)
   assert.equal(mandateAllows(mandate, 'fs.write', 'file:src/other.ts').ok, false)
   assert.equal(mandateAllows(mandate, 'git.push', 'branch:tp/tsk_1').ok, false)
   assert.equal(mandateAllows(mandate, 'fs.read', 'branch:tp/tsk_1').ok, true)

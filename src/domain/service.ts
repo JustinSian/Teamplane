@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process'
+import { timingSafeEqual } from 'node:crypto'
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type {
@@ -126,9 +127,10 @@ export class TeamplaneService {
 
   authenticate(token: string | undefined): AuthenticatedPrincipal {
     if (!token) fail('missing_token', 'Authorization: Bearer <principal token> is required.', 401)
-    const hash = sha256(token)
+    const hash = Buffer.from(sha256(token), 'hex')
     for (const principal of this.state.principals.values()) {
-      if (principal.tokenHash === hash) {
+      const stored = Buffer.from(principal.tokenHash, 'hex')
+      if (stored.length === hash.length && timingSafeEqual(stored, hash)) {
         if (principal.disabled) fail('principal_disabled', `Principal ${principal.id} is disabled.`, 403)
         return { principal, roles: this.rolesOf(principal.id) }
       }
@@ -170,6 +172,15 @@ export class TeamplaneService {
     return { principal, token }
   }
 
+  disablePrincipal(actor: AuthenticatedPrincipal, principalId: string, reason = ''): void {
+    this.authorizeOrThrow(actor, 'principal.disable', 'principal:*')
+    const principal = this.state.principals.get(principalId)
+    if (!principal) fail('principal_not_found', `No principal ${principalId}`, 404)
+    if (principal.id === actor.principal.id) fail('self_disable', 'You cannot disable your own principal.', 409)
+    if (principal.disabled) return
+    this.log.append('principal.disabled', actor.principal.id, { principalId, at: this.now(), reason })
+  }
+
   grantRole(actor: AuthenticatedPrincipal, principalId: string, role: Role): void {
     this.authorizeOrThrow(actor, 'role.grant', 'policy')
     if (!ROLES.includes(role)) fail('invalid_role', `Unknown role ${role}`, 422)
@@ -203,6 +214,10 @@ export class TeamplaneService {
     this.authorizeOrThrow(actor, 'mandate.issue', `task:${task.id}`)
     if (!this.state.principals.has(input.subject)) fail('principal_not_found', `No principal ${input.subject}`, 404)
 
+    const paths = unique(input.paths.map(normalizePath))
+    if (paths.length === 0 || paths.some((path) => path === '')) {
+      fail('invalid_mandate_path', 'Mandate paths must name files or directories; "." and "/" are not allowed.', 422)
+    }
     const ttl = Math.max(60, Math.min(input.ttlSeconds ?? 3600, 7 * 86400))
     const issuedAt = this.now()
     const claims: MandateClaims = {
@@ -212,9 +227,9 @@ export class TeamplaneService {
       subject: input.subject,
       task: task.id,
       scope: {
-        paths: unique(input.paths.map(normalizePath)),
-        actions: unique(input.actions ?? ['fs.read', 'fs.write', 'lease.acquire', 'memory.read', 'memory.write', 'task.submit']),
-        branches: unique(input.branches ?? [task.branch]),
+        paths,
+        actions: unique(input.actions ?? ['fs.read', 'fs.write', 'lease.acquire', 'memory.read', 'memory.write', 'task.submit', 'git.push']),
+        branches: unique(input.branches ?? [task.branch, task.baseBranch]),
         memory: unique(input.memory ?? ['team']),
       },
       limits: { maxWrites: input.maxWrites ?? 1000, expiresAt: addSeconds(issuedAt, ttl) },
@@ -285,12 +300,13 @@ export class TeamplaneService {
 
   createTask(
     actor: AuthenticatedPrincipal,
-    input: { title: string; repoPath?: string; baseBranch?: string; assignee?: string | null },
+    input: { title: string; repoPath?: string; baseBranch?: string; assignee?: string | null; verify?: string[] },
   ): Task {
     this.authorizeOrThrow(actor, 'task.create', 'task:*')
     if (!input.title || input.title.trim() === '') fail('invalid_title', 'title is required', 422)
     const repoPath = input.repoPath ?? this.options.repoPath
     if (!repoPath) fail('repo_required', 'A repository path is required (--repo).', 422)
+    const verify = this.normalizeVerify(input.verify ?? [])
     const taskId = id('tsk')
     const task: Task = {
       id: taskId,
@@ -302,12 +318,32 @@ export class TeamplaneService {
       branch: `tp/${taskId}`,
       worktree: null,
       mandateId: null,
+      verify,
       status: 'open',
       createdAt: this.now(),
       updatedAt: this.now(),
     }
     this.log.append('task.created', actor.principal.id, task as unknown as JsonValue)
     return task
+  }
+
+  setTaskVerify(actor: AuthenticatedPrincipal, taskId: string, verify: string[]): Task {
+    const task = this.state.tasks.get(taskId)
+    if (!task) fail('task_not_found', `No task ${taskId}`, 404)
+    this.authorizeOrThrow(actor, 'task.verify', `task:${taskId}`)
+    const commands = this.normalizeVerify(verify)
+    this.log.append('task.verify', actor.principal.id, { taskId, verify: commands, at: this.now() })
+    return this.state.tasks.get(taskId)!
+  }
+
+  private normalizeVerify(commands: string[]): string[] {
+    if (commands.length > 10) fail('too_many_verify_commands', 'At most 10 verification commands are allowed.', 422)
+    return commands.map((command) => {
+      const trimmed = String(command).trim()
+      if (trimmed === '') fail('invalid_verify_command', 'Verification commands must not be empty.', 422)
+      if (trimmed.length > 500) fail('invalid_verify_command', 'A verification command must be 500 characters or fewer.', 422)
+      return trimmed
+    })
   }
 
   startTask(actor: AuthenticatedPrincipal, taskId: string, mandateId?: string): Task {
@@ -575,10 +611,22 @@ export class TeamplaneService {
 
   requestApproval(
     actor: AuthenticatedPrincipal,
-    input: { action: string; resource: string; mandateId?: string | null; ttlSeconds?: number; requiredRole?: Role },
+    input: { action: string; resource: string; mandateId?: string | null; ttlSeconds?: number; fields?: Record<string, unknown> },
   ): Approval {
     const now = this.now()
-    const requiredRole = input.requiredRole ?? 'owner'
+    const decision = decide(this.state.policy, {
+      actor,
+      action: input.action,
+      resource: input.resource,
+      fields: input.fields ?? {},
+    })
+    if (decision.decision !== 'ask') {
+      fail('approval_not_required', `Policy does not require approval for ${input.action} on ${input.resource}.`, 422, {
+        decision: decision.decision,
+        ruleId: decision.ruleId,
+      })
+    }
+    const requiredRole = decision.obligations.approvalRole ?? 'owner'
     if (!ROLES.includes(requiredRole)) fail('invalid_role', `Unknown role ${requiredRole}`, 422)
     const approval: Approval = {
       id: id('apr'),
@@ -634,6 +682,18 @@ export class TeamplaneService {
     return approval
   }
 
+  private useApproval(
+    actor: AuthenticatedPrincipal,
+    approval: Approval,
+    action: string,
+    resource: string,
+    mandateId: string | null,
+    consume: boolean,
+  ): string {
+    if (consume) this.consumeApproval(actor, approval.id, action, resource, mandateId)
+    return approval.resolvedBy ?? 'an approver'
+  }
+
   consumeApproval(actor: AuthenticatedPrincipal, approvalId: string, action: string, resource: string, mandateId: string | null): void {
     const approval = this.approvalValid(approvalId, action, resource, mandateId)
     if (!approval) fail('approval_invalid', 'Approval is missing, expired or bound to a different action.', 403)
@@ -649,6 +709,7 @@ export class TeamplaneService {
     fields: Record<string, unknown> = {},
     mandate?: MandateClaims,
     approvalId?: string,
+    consumeApproval = false,
   ): AuthorizeResult {
     const decision = decide(this.state.policy, { actor, action, resource, fields })
     const obligations: Obligations = decision.obligations
@@ -680,13 +741,24 @@ export class TeamplaneService {
         if (!approval) {
           return { ...result, decision: 'ask', reason: 'This action requires a human approval (approvalId).' }
         }
-        result = { ...result, reason: `Approved by ${approval.resolvedBy}.` }
+        const approver = this.useApproval(actor, approval, action, resource, mandate?.id ?? null, consumeApproval)
+        result = { ...result, reason: `Approved by ${approver}.` }
       }
     }
 
     if (decision.decision === 'ask') {
       const approval = this.approvalValid(approvalId, action, resource, mandate?.id ?? null)
-      if (approval) result = { ...result, decision: 'allow', reason: `Approved by ${approval.resolvedBy}.` }
+      if (approval) {
+        if (obligations.requireMandate && !mandate) {
+          return { ...result, decision: 'deny', reason: 'This action requires a signed mandate (X-Teamplane-Mandate).', mandateOk: false }
+        }
+        if (mandate) {
+          const check = mandateAllows(mandate, action, resource)
+          if (!check.ok) return { ...result, decision: 'deny', reason: check.reason, mandateOk: false }
+        }
+        const approver = this.useApproval(actor, approval, action, resource, mandate?.id ?? null, consumeApproval)
+        result = { ...result, decision: 'allow', reason: `Approved by ${approver}.` }
+      }
     }
 
     if (result.decision === 'deny' && !action.endsWith('.read')) {
@@ -710,7 +782,7 @@ export class TeamplaneService {
     mandate?: MandateClaims,
     approvalId?: string,
   ): AuthorizeResult {
-    const result = this.authorize(actor, action, resource, fields, mandate, approvalId)
+    const result = this.authorize(actor, action, resource, fields, mandate, approvalId, true)
     if (result.decision !== 'allow') {
       fail(result.decision === 'ask' ? 'approval_required' : 'forbidden', result.reason, result.decision === 'ask' ? 428 : 403, {
         ruleId: result.ruleId,
@@ -735,6 +807,13 @@ export class TeamplaneService {
   }
 
   // ------------------------------------------------------------------ submit
+
+  private eventResult(result: SubmitResult): SubmitResult {
+    return {
+      ...result,
+      verify: result.verify.map(({ command, ok, code }) => ({ command, ok, code, output: '' })),
+    }
+  }
 
   submit(actor: AuthenticatedPrincipal, taskId: string, input: SubmitInput, mandate?: MandateClaims): SubmitResult {
     const task = this.state.tasks.get(taskId)
@@ -763,7 +842,7 @@ export class TeamplaneService {
         merged: false,
         reason: `No active lease covers: ${uncovered.join(', ')}`,
       }
-      this.log.append('submit.rejected', actor.principal.id, { ...result, at: this.now() })
+      this.log.append('submit.rejected', actor.principal.id, { ...this.eventResult(result), at: this.now() })
       return result
     }
 
@@ -779,11 +858,14 @@ export class TeamplaneService {
         merged: false,
         reason: `git merge-tree reports conflicts: ${conflicts.join(', ')}`,
       }
-      this.log.append('submit.rejected', actor.principal.id, { ...result, at: this.now() })
+      this.log.append('submit.rejected', actor.principal.id, { ...this.eventResult(result), at: this.now() })
       return result
     }
 
-    const verify = input.verify ?? []
+    if (input.verify && input.verify.length > 0) {
+      fail('verify_task_bound', 'Verification commands are bound to the task; set them at task creation or with task.verify.', 422)
+    }
+    const verify = task.verify ?? []
     const verifyResults: SubmitResult['verify'] = []
     for (const command of verify) {
       const run = spawnSync(command, {
@@ -811,19 +893,20 @@ export class TeamplaneService {
         merged: false,
         reason: 'Verification command failed.',
       }
-      this.log.append('submit.rejected', actor.principal.id, { ...result, at: this.now() })
+      this.log.append('submit.rejected', actor.principal.id, { ...this.eventResult(result), at: this.now() })
       return result
     }
 
     this.log.append('submit.verified', actor.principal.id, {
       taskId,
       changedFiles: changed,
-      verify: verifyResults.map((entry) => ({ command: entry.command, ok: entry.ok })),
+      verify: verifyResults.map((entry) => ({ command: entry.command, ok: entry.ok, code: entry.code, output: '' })),
       at: this.now(),
     })
 
     let merged = false
     if (input.merge) {
+      this.authorizeOrThrow(actor, 'git.push', `branch:${task.baseBranch}`, { request: { force: false } }, mandate)
       const merge = this.git(task.repoPath, ['merge', '--no-ff', task.branch, '-m', `teamplane: merge ${task.id}`])
       if (merge.code !== 0) {
         const result: SubmitResult = {
@@ -835,7 +918,7 @@ export class TeamplaneService {
           merged: false,
           reason: `git merge failed: ${merge.stderr.trim()}`,
         }
-        this.log.append('submit.rejected', actor.principal.id, { ...result, at: this.now() })
+        this.log.append('submit.rejected', actor.principal.id, { ...this.eventResult(result), at: this.now() })
         return result
       }
       merged = true

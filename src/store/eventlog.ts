@@ -46,6 +46,7 @@ export class EventLog extends EventEmitter {
   readonly snapshotFile: string
   state: State
   private snapshotWriteInFlight = false
+  private cache: EventRecord[] | null = null
   private segmentFirstSeq = 1
   private segmentCount = 0
   private readonly maxSegmentEvents: number
@@ -66,22 +67,8 @@ export class EventLog extends EventEmitter {
     const configured = options.maxSegmentEvents ?? Number(process.env.TEAMPLANE_SEGMENT_EVENTS ?? '')
     const maxSegmentEvents = Number.isFinite(configured) && configured > 0 ? configured : 10_000
     const log = new EventLog(dir, maxSegmentEvents)
-    log.loadSnapshot()
     log.replay()
     return log
-  }
-
-  private loadSnapshot(): void {
-    if (!existsSync(this.snapshotFile)) return
-    try {
-      const snapshot = parseJson<SerializedSnapshot>(readFileSync(this.snapshotFile, 'utf8'), 'snapshot')
-      if (snapshot.version !== 1) return
-      this.state = deserializeState(snapshot.state)
-      this.state.lastSeq = snapshot.seq
-      this.state.lastHash = snapshot.hash
-    } catch {
-      this.state = emptyState()
-    }
   }
 
   private segments(): string[] {
@@ -108,6 +95,7 @@ export class EventLog extends EventEmitter {
       } catch {
         fail('corrupt_event_log', `Event log at ${path} contains a malformed line.`, 500)
       }
+      this.cache?.push(event)
       if (event.seq <= this.state.lastSeq) continue
       const check = verifyEvent(event, previous, expectedSeq)
       if (!check.ok) fail('corrupt_event_log', check.reason ?? 'event log verification failed', 500)
@@ -132,6 +120,7 @@ export class EventLog extends EventEmitter {
   }
 
   private replay(): void {
+    this.cache = []
     for (const path of this.segments()) this.replayFile(path)
     this.segmentCount = this.replayFile(this.file)
     this.segmentFirstSeq = this.firstSeqOf(this.file) ?? this.state.lastSeq + 1
@@ -157,6 +146,7 @@ export class EventLog extends EventEmitter {
     const event: EventRecord = { ...core, hash }
     appendFileSync(this.file, `${canonicalJson(event)}\n`, { mode: 0o600 })
     this.segmentCount += 1
+    this.cache?.push(event)
     applyEvent(this.state, event)
     this.emit('event', event)
     if (seq % SNAPSHOT_EVERY === 0) this.writeSnapshot()
@@ -182,15 +172,16 @@ export class EventLog extends EventEmitter {
   }
 
   events(): EventRecord[] {
-    const paths = [...this.segments(), this.file]
+    if (this.cache) return this.cache
     const events: EventRecord[] = []
-    for (const path of paths) {
+    for (const path of [...this.segments(), this.file]) {
       if (!existsSync(path)) continue
       for (const line of readFileSync(path, 'utf8').split(String.fromCharCode(10))) {
         if (line.trim() === '') continue
         events.push(parseJson<EventRecord>(line, 'event log'))
       }
     }
+    this.cache = events
     return events
   }
 
@@ -243,6 +234,12 @@ export function applyEvent(state: State, event: EventRecord): void {
       if (!state.roles.has(principal.id)) state.roles.set(principal.id, [])
       break
     }
+    case 'principal.disabled': {
+      const payload = data as { principalId: string; at: string }
+      const principal = state.principals.get(payload.principalId)
+      if (principal) state.principals.set(principal.id, { ...principal, disabled: true })
+      break
+    }
     case 'role.granted': {
       const payload = data as { principalId: string; role: Role }
       const current = state.roles.get(payload.principalId) ?? []
@@ -282,6 +279,12 @@ export function applyEvent(state: State, event: EventRecord): void {
           updatedAt: payload.at,
         })
       }
+      break
+    }
+    case 'task.verify': {
+      const payload = data as { taskId: string; verify: string[]; at: string }
+      const task = state.tasks.get(payload.taskId)
+      if (task) state.tasks.set(task.id, { ...task, verify: payload.verify, updatedAt: payload.at })
       break
     }
     case 'task.status': {

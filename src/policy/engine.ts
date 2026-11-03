@@ -53,7 +53,7 @@ export function defaultPolicy(): Policy {
         description: 'Agents may acquire leases and submit work only inside a mandate.',
         effect: 'allow',
         principals: ['role:agent', 'role:maintainer'],
-        actions: ['lease.acquire', 'memory.write', 'task.submit'],
+        actions: ['lease.acquire', 'memory.write', 'task.submit', 'git.push'],
         resources: ['*'],
         obligations: { requireMandate: true },
       },
@@ -62,7 +62,7 @@ export function defaultPolicy(): Policy {
         description: 'Maintainers may create tasks and issue mandates for them.',
         effect: 'allow',
         principals: ['role:maintainer'],
-        actions: ['task.create', 'task.start', 'task.launch', 'mandate.issue'],
+        actions: ['task.create', 'task.start', 'task.launch', 'task.verify', 'mandate.issue'],
         resources: ['*'],
       },
       {
@@ -264,7 +264,12 @@ export function mandateAllows(claims: MandateClaims, action: string, resource: s
     return { ok: true, reason: 'Within mandate memory scope.' }
   }
 
-  return { ok: true, reason: 'Resource is not scope-bound.' }
+  if (kind === 'task') {
+    if (claims.task === value) return { ok: true, reason: 'Within the mandate task.' }
+    return { ok: false, reason: `Task ${value} is outside mandate ${claims.id} (bound to ${claims.task}).` }
+  }
+
+  return { ok: false, reason: `Resource kind "${kind}" is not recognised; the mandate fails closed.` }
 }
 
 export function validatePolicy(policy: Policy): string[] {

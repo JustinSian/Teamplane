@@ -11,7 +11,7 @@ Include the version/commit, the reproduction, and the event log if relevant. Do 
 
 | Version | Supported |
 |---|---|
-| 0.1.x | yes, best effort |
+| 0.3.x | yes, best effort |
 
 Pre-1.0 means interfaces may change, but security fixes are backported to the latest minor.
 
@@ -27,14 +27,18 @@ Teamplane is a coordination layer, not a sandbox. It assumes:
 
 What Teamplane enforces:
 
-- Every API action is checked against policy **and** the caller's mandate.
+- Every API action is checked against policy **and** the caller's mandate. Unknown resource kinds fail closed; `task:` actions are bound to the mandate's task.
 - Writes must hold a lease; leases conflict by typed containment, not guesswork.
-- Mandates attenuate; approvals are single-use and bound to an action hash.
-- Memory reads are ACL-projected; recognised secrets are rejected on write.
-- Events are hash-chained and replay-verified.
+- Mandates attenuate; approvals derive `requiredRole` from the matching policy rule (a request body cannot choose it), are single-use, action-hash-bound and consumed atomically.
+- Verification commands are bound to a task at creation (or changed by an authorised principal); `submit` rejects commands supplied in the request body.
+- Memory reads are ACL-projected; `memory.written` events and SSE frames redact content for principals that cannot read the fragment.
+- Events are hash-chained and replay-verified. Snapshots are written as a cache but **never loaded**; startup always replays the chain.
+
+The signing key lives at `.teamplane/keys/root.key` inside the workspace in 0.3.x. Anyone with filesystem access to the control-plane host can read it; `chmod`/`mode` is not an ACL on Windows. For strong isolation, run the control plane on a separate host or container and keep worktrees off that host.
 
 What it does **not** enforce:
 
+- Filesystem access to the control-plane host, including the signing key.
 - Raw file writes inside a worktree, unless the host guard is installed.
 - Shell side effects inside an allowed command.
 - Semantic correctness of a merge.

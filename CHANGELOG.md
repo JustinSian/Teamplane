@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.3.0 — 2026-11-03
+
+Security release responding to an external review. **Breaking changes** are marked.
+
+### Fixed (P0)
+
+- **Approval role forgery**: `POST /v1/approvals` no longer accepts `requiredRole` or `mandateId` from the body. The role comes from the matching policy rule (`obligations.approvalRole`), and a request that policy does not mark `ask` is rejected. *(breaking)*
+- **Approval replay**: an approval is consumed atomically in the authorising call; `/v1/authorize` consumes by default (`consume: false` opts out), and `/v1/policy/explain` never consumes. *(breaking)*
+- **Request-body verify / RCE**: verification commands are bound to the task at creation (`POST /v1/tasks` with `verify`) or changed through `POST /v1/tasks/:id/verify` by an authorised principal. `submit` rejects body-supplied commands with `422 verify_task_bound`. *(breaking)*
+- **Private memory leak via events**: `GET /v1/events` and SSE redact `memory.written` content when the caller cannot read the fragment; the log still stores the fragment, which is documented.
+- **Forged snapshot**: snapshots are no longer loaded. Startup always replays the hash chain; a mutated snapshot cannot create principals or roles.
+
+### Fixed (P1)
+
+- `mandateAllows` fails closed for unknown resource kinds; `task:` resources must match `claims.task`.
+- Merging into `task.baseBranch` now requires `git.push` authorisation on `branch:<base>`; default mandates include the base branch.
+- Mandate paths that normalise to `.` or `/` are rejected instead of silently matching the whole repo.
+- `GET /v1/mandates` no longer returns signed tokens.
+- Unauthenticated requests are rate limited by IP before token validation.
+- `POST /v1/principals/:id/disable` and `teamplane user disable` now exist.
+- Token comparison uses `timingSafeEqual`; static-file containment uses `path.relative`; 500 responses no longer echo internal messages.
+- `events()` is cached in memory, so the event log is no longer reparsed per request.
+
+### Changed
+
+- Tests 29 → 31; the suite now reproduces the approval-role forgery, body-supplied verify, private-memory event leak, forged snapshot, cross-task mandate and unauthenticated rate limiting.
+- Version 0.3.0. The submit CLI no longer accepts `--verify`; use `task create --verify` or `task verify`.
+
 ## 0.2.9 — 2026-11-03
 
 ### Fixed

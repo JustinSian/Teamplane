@@ -116,6 +116,7 @@ export interface Task {
   branch: string
   worktree: string | null
   mandateId: string | null
+  verify: string[]
   status: TaskStatus
   createdAt: string
   updatedAt: string
@@ -188,6 +189,7 @@ export interface Approval {
 
 export type EventType =
   | 'principal.created'
+  | 'principal.disabled'
   | 'role.granted'
   | 'policy.updated'
   | 'mandate.issued'
@@ -195,6 +197,7 @@ export type EventType =
   | 'task.created'
   | 'task.started'
   | 'task.launched'
+  | 'task.verify'
   | 'task.status'
   | 'lease.acquired'
   | 'lease.denied'

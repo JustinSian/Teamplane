@@ -121,7 +121,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       case 'doctor':
         return cmdDoctor(parsed)
       case 'version':
-        process.stdout.write('teamplane 0.2.9\n')
+        process.stdout.write('teamplane 0.3.0\n')
         return 0
       default:
         process.stderr.write(`Unknown command: ${command}\n\n${usage()}`)
@@ -144,7 +144,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 }
 
 function usage(): string {
-  return `teamplane 0.2.9 — a deterministic control plane for multi-user agent teams
+  return `teamplane 0.3.0 — a deterministic control plane for multi-user agent teams
 
 Usage: teamplane <command> [options]
 
@@ -152,6 +152,7 @@ Usage: teamplane <command> [options]
   join      --server <url> [--name <team>]
   serve     [--port] [--host] [--quiet]
   user add  --name <display> [--kind user|agent|service] [--role agent]
+  user disable --id <principal> [--reason ...]
   user list
   role grant --id <principal> --role <role>
   policy show | apply --file policy.json | lint --file policy.json | explain --action <a> --resource <r>
@@ -162,6 +163,7 @@ Usage: teamplane <command> [options]
   mandate list
   task create --title <t> [--repo <path>] [--base main]
   task start  <taskId> [--id <mandateId>]
+  task verify <taskId> --verify <command>
   task launch <taskId> [--detach] [-- <command...>]
   task list | task show <taskId>
   lease acquire --key file:src/x.ts --task <id> [--mode exclusive] [--ttl 15m]
@@ -170,7 +172,7 @@ Usage: teamplane <command> [options]
   memory search --query <q> [--kind decision]
   memory conflicts
   approve <approvalId> [--reason ...] | reject <approvalId>
-  submit <taskId> [--verify "npm test"] [--merge]
+  submit <taskId> [--merge]
   events tail [--since 0] [--types lease.,approval.]
   audit verify | audit export
   dsh print-config
@@ -319,6 +321,12 @@ async function cmdUser(parsed: Parsed, sub: string | undefined): Promise<number>
     )
     return 0
   }
+  if (sub === 'disable') {
+    const id = value(parsed, 'id') ?? parsed.positionals[2] ?? ''
+    await client.post(`/v1/principals/${encodeURIComponent(id)}/disable`, { reason: value(parsed, 'reason') ?? '' })
+    print(parsed, { ok: true }, `Disabled ${id}`)
+    return 0
+  }
   if (sub === 'list' || sub === undefined) {
     const payload = await client.get<{ principals: Array<Record<string, unknown>> }>('/v1/principals')
     print(
@@ -445,8 +453,15 @@ async function cmdTask(parsed: Parsed, sub: string | undefined): Promise<number>
       title: value(parsed, 'title') ?? '',
       repoPath: value(parsed, 'repo'),
       baseBranch: value(parsed, 'base'),
+      verify: values(parsed, 'verify'),
     })
     print(parsed, task, `Created task ${task.id as string}`)
+    return 0
+  }
+  if (sub === 'verify') {
+    const taskId = value(parsed, 'task') ?? parsed.positionals[2] ?? ''
+    const task = await client.setTaskVerify(taskId, values(parsed, 'verify'))
+    print(parsed, task, `Updated verification for ${taskId}`)
     return 0
   }
   if (sub === 'start') {
@@ -640,10 +655,11 @@ async function cmdApprove(parsed: Parsed, approve: boolean): Promise<number> {
 async function cmdSubmit(parsed: Parsed): Promise<number> {
   const client = makeClient()
   const taskId = value(parsed, 'task') ?? parsed.positionals[1] ?? ''
-  const result = await client.submit(taskId, {
-    verify: values(parsed, 'verify'),
-    merge: flag(parsed, 'merge'),
-  })
+  if (values(parsed, 'verify').length > 0) {
+    process.stderr.write('error: verification commands are bound to the task; use "teamplane task verify <id> --verify ..."' + String.fromCharCode(10))
+    return 2
+  }
+  const result = await client.submit(taskId, { merge: flag(parsed, 'merge') })
   print(parsed, result)
   return result.ok ? 0 : 1
 }

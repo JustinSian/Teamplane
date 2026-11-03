@@ -1,8 +1,8 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { existsSync, readFileSync, statSync } from 'node:fs'
-import { extname, join, normalize } from 'node:path'
+import { extname, isAbsolute, join, normalize, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import type { AuthenticatedPrincipal, MandateClaims, Policy, Role } from '../core/types.js'
+import type { AuthenticatedPrincipal, MandateClaims, MemoryFragment, Policy, Role } from '../core/types.js'
 import { TeamplaneError, fail, fail as raise, nowIso, parseJson } from '../core/util.js'
 import type { LoadedWorkspace } from '../core/config.js'
 import { handleMcpHttp } from '../mcp/http.js'
@@ -31,7 +31,7 @@ interface RequestContext {
 export async function startServer(workspace: LoadedWorkspace, options: ServerOptions = {}): Promise<RunningServer> {
   const host = options.host ?? workspace.config.host
   const port = options.port ?? workspace.config.port
-  const clients = new Set<{ res: ServerResponse; types: string[] }>()
+  const clients = new Set<{ res: ServerResponse; types: string[]; actor: AuthenticatedPrincipal }>()
   const limiter = rateLimiterFromEnv()
   const sweep = setInterval(() => {
     try {
@@ -45,7 +45,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
   const onEvent = (event: { type: string }) => {
     for (const client of clients) {
       if (client.types.length > 0 && !client.types.some((type) => event.type === type || event.type.startsWith(type.replace(/\*$/, '')))) continue
-      writeSse(client.res, 'event', event, (event as { seq?: number }).seq)
+      writeSse(client.res, 'event', redactEvent(workspace.service, client.actor, event), (event as { seq?: number }).seq)
     }
   }
   workspace.log.on('event', onEvent)
@@ -64,6 +64,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
     }
     if (path === '/mcp') {
       const token = bearer(req)
+      takeToken(limiter, `ip:${req.socket.remoteAddress ?? 'unknown'}`)
       const actor = workspace.service.authenticate(token)
       takeToken(limiter, actor.principal.id)
       const rawMandate = req.headers['x-teamplane-mandate'] as string | undefined
@@ -76,7 +77,6 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
     if (path.startsWith('/v1/stream')) {
       const token = url.searchParams.get('token') ?? bearer(req)
       const actor = workspace.service.authenticate(token)
-      void actor
       const types = (url.searchParams.get('types') ?? '').split(',').map((item) => item.trim()).filter(Boolean)
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
@@ -84,7 +84,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
         Connection: 'keep-alive',
         'X-Accel-Buffering': 'no',
       })
-      const client = { res, types }
+      const client = { res, types, actor }
       const headerId = Number(req.headers['last-event-id'] ?? '')
       const querySince = Number(url.searchParams.get('since') ?? '')
       const since = Number.isFinite(headerId) && headerId > 0 ? headerId : Number.isFinite(querySince) && querySince > 0 ? querySince : 0
@@ -146,6 +146,12 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
       })
       return
     }
+    const disableMatch = /^\/v1\/principals\/([^/]+)\/disable$/.exec(path)
+    if (method === 'POST' && disableMatch) {
+      service.disablePrincipal(ctx.actor, disableMatch[1]!, String(body.reason ?? ''))
+      sendJson(res, 200, { ok: true })
+      return
+    }
     if (method === 'POST' && path === '/v1/roles/grant') {
       service.grantRole(ctx.actor, String(body.principalId ?? ''), body.role as Role)
       sendJson(res, 200, { ok: true })
@@ -170,6 +176,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
         (body.fields as Record<string, unknown> | undefined) ?? {},
         ctx.mandate,
         body.approvalId as string | undefined,
+        false,
       )
       sendJson(res, 200, result)
       return
@@ -182,6 +189,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
         (body.fields as Record<string, unknown> | undefined) ?? {},
         ctx.mandate,
         body.approvalId as string | undefined,
+        body.consume !== false,
       )
       sendJson(res, 200, result)
       return
@@ -222,7 +230,9 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
       return
     }
     if (method === 'GET' && path === '/v1/mandates') {
-      sendJson(res, 200, { mandates: [...service.state.mandates.values()] })
+      sendJson(res, 200, {
+        mandates: [...service.state.mandates.values()].map(({ token: _token, ...record }) => record),
+      })
       return
     }
 
@@ -232,12 +242,19 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
         repoPath: body.repoPath ? String(body.repoPath) : undefined,
         baseBranch: body.baseBranch ? String(body.baseBranch) : undefined,
         assignee: body.assignee ? String(body.assignee) : null,
+        verify: asStringArray(body.verify ?? []),
       })
       sendJson(res, 201, task)
       return
     }
     if (method === 'GET' && path === '/v1/tasks') {
       sendJson(res, 200, { tasks: [...service.state.tasks.values()] })
+      return
+    }
+    const verifyMatch = /^\/v1\/tasks\/([^/]+)\/verify$/.exec(path)
+    if (method === 'POST' && verifyMatch) {
+      const task = service.setTaskVerify(ctx.actor, verifyMatch[1]!, asStringArray(body.verify ?? []))
+      sendJson(res, 200, task)
       return
     }
     const startMatch = /^\/v1\/tasks\/([^/]+)\/start$/.exec(path)
@@ -333,9 +350,9 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
       const approval = service.requestApproval(ctx.actor, {
         action: String(body.action ?? ''),
         resource: String(body.resource ?? ''),
-        mandateId: ctx.mandate?.id ?? (body.mandateId ? String(body.mandateId) : null),
+        mandateId: ctx.mandate?.id ?? null,
         ttlSeconds: asNumber(body.ttlSeconds),
-        requiredRole: body.requiredRole as Role | undefined,
+        fields: (body.fields as Record<string, unknown> | undefined) ?? {},
       })
       sendJson(res, 201, approval)
       return
@@ -366,7 +383,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
     if (method === 'GET' && path === '/v1/events') {
       const since = Number(url.searchParams.get('since') ?? 0)
       const types = (url.searchParams.get('types') ?? '').split(',').map((item) => item.trim()).filter(Boolean)
-      sendJson(res, 200, { events: service.eventsSince(since, types) })
+      sendJson(res, 200, { events: service.eventsSince(since, types).map((event) => redactEvent(service, ctx.actor, event)) })
       return
     }
     if (method === 'GET' && path === '/v1/audit/verify') {
@@ -392,6 +409,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
 
   function contextFor(req: IncomingMessage): RequestContext {
     const token = bearer(req)
+    takeToken(limiter, `ip:${req.socket.remoteAddress ?? 'unknown'}`)
     const actor = workspace.service.authenticate(token)
     takeToken(limiter, actor.principal.id)
     const mandate = workspace.service.resolveMandate(req.headers['x-teamplane-mandate'] as string | undefined, actor)
@@ -492,8 +510,30 @@ function sendError(res: ServerResponse, error: unknown): void {
     sendJson(res, error.status, { error: { code: error.code, message: error.message, details: error.details ?? null } })
     return
   }
-  const message = error instanceof Error ? error.message : String(error)
-  sendJson(res, 500, { error: { code: 'internal_error', message, details: null } })
+  if (error instanceof Error) process.stderr.write(`teamplane: internal error: ${error.message}` + String.fromCharCode(10))
+  sendJson(res, 500, { error: { code: 'internal_error', message: 'Internal server error.', details: null } })
+}
+
+function redactEvent(
+  service: { canRead: (actor: AuthenticatedPrincipal, fragment: MemoryFragment) => boolean },
+  actor: AuthenticatedPrincipal,
+  event: { type: string; data?: unknown },
+): { type: string; data?: unknown } {
+  if (event.type !== 'memory.written') return event
+  const fragment = event.data as MemoryFragment
+  if (service.canRead(actor, fragment)) return event
+  return {
+    ...event,
+    data: {
+      id: fragment.id,
+      owner: fragment.owner,
+      kind: fragment.kind,
+      topic: fragment.topic,
+      visibility: fragment.visibility,
+      createdAt: fragment.createdAt,
+      redacted: true,
+    },
+  }
 }
 
 function writeSse(res: ServerResponse, event: string, data: unknown, id?: number): void {
@@ -502,9 +542,10 @@ function writeSse(res: ServerResponse, event: string, data: unknown, id?: number
 }
 
 function serveStatic(path: string, res: ServerResponse): void {
-  const relative = path === '/' ? 'index.html' : path.replace(/^\/+/, '')
-  const target = normalize(join(WEB_ROOT, relative))
-  if (!target.startsWith(normalize(WEB_ROOT))) {
+  const requested = path === '/' ? 'index.html' : path.replace(/^\/+/, '')
+  const target = normalize(join(WEB_ROOT, requested))
+  const outside = relative(normalize(WEB_ROOT), target)
+  if (outside.startsWith('..') || isAbsolute(outside)) {
     sendJson(res, 403, { error: { code: 'forbidden', message: 'Path traversal is not allowed.' } })
     return
   }

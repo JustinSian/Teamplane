@@ -1,6 +1,6 @@
 # Status
 
-**Version:** 0.2.9 · **Date:** 2026-11-03 · **Maturity:** research preview
+**Version:** 0.3.0 · **Date:** 2026-11-03 · **Maturity:** research preview
 
 Teamplane is a working reference implementation of a multi-principal control plane for agent teams. It is not a finished product. This page is the honest matrix: what is shipped, what is partial, what is not built, and what has actually been measured.
 
@@ -13,9 +13,9 @@ Teamplane is a working reference implementation of a multi-principal control pla
 | Deterministic policy | **Shipped** | JSON rules, deny > ask > allow, default deny, explain |
 | Typed leases | **Shipped** | `file:`, `dir:`, `branch:`, `memory:`, fencing, TTL, renewal |
 | Curated memory | **Shipped** | ACL projection, provenance, secret rejection, conflict events |
-| Approvals | **Shipped** | one-shot, action-hash-bound, expiring, self-approval denied |
-| Merge gate | **Shipped** | lease coverage + `git merge-tree` + verification commands + optional merge |
-| Audit log | **Shipped** | append-only JSONL, SHA-256 chain, replay verification, snapshots |
+| Approvals | **Shipped** | role derived from the policy rule, one-shot, action-hash-bound, consumed atomically, self-approval denied |
+| Merge gate | **Shipped** | lease coverage + `git merge-tree` + task-bound verification + base-branch authorisation + optional merge |
+| Audit log | **Shipped** | append-only JSONL, SHA-256 chain, replay verification; snapshots are never trusted |
 | CLI | **Shipped** | init, principals, mandates, tasks, leases, memory, approvals, submit, audit |
 | HTTP + SSE | **Shipped** | REST + live events + static console |
 | npm package | **Not published** | install from source (`npm install && npm run build && npm link`); the MCP row uses the local `teamplane` binary |
@@ -29,15 +29,17 @@ Teamplane is a working reference implementation of a multi-principal control pla
 | Multi-node / HA | **Not built** | single process, single writer |
 | Memory review workflow | **Not built** | anyone with `memory.write` can publish; conflicts are events, not approvals |
 | Log rotation | **Shipped** | segments of 10,000 events under `.teamplane/archive/`, configurable with `TEAMPLANE_SEGMENT_EVENTS`; replay and audit span segments |
-| Rate limiting | **Shipped** | per-principal token bucket, 120 burst / 2 per second by default, `Retry-After` |
+| Rate limiting | **Shipped** | per-principal **and per-IP** token bucket, 120 burst / 2 per second by default, `Retry-After` |
 | TLS | **Not built** | bind to loopback or terminate TLS in front |
 | SSO / identity federation | **Not built** | external identities are provenance strings |
+| `maxWrites` | **Advisory** | recorded in the mandate but not enforced; do not rely on it |
+| Key isolation | **Not built** | signing key lives next to the workspace; host/container isolation is the operator's job |
 
 ## Evidence
 
 | Claim | Evidence |
 |---|---|
-| Coordination invariants hold | `npm test` — **29/29** passing |
+| Coordination invariants hold | `npm test` — **31/31** passing |
 | End-to-end behaviour | `npm run demo` — **16/16** steps, 2.7 s, report in `demo/out/` |
 | MCP works on both transports | `npm run mcp:smoke` — 10 tools, stdio + HTTP |
 | Package is installable | `npm pack` + install into a clean prefix; CLI runs |
@@ -50,6 +52,7 @@ Teamplane is a working reference implementation of a multi-principal control pla
 | CI is green | `ci`, `pages`, `security` and `release` pass on `main` in the public repository |
 | Guard works in the real DSH pipeline | `test/integration/dsh-runtime.test.mjs` mounts `@deepseek-ai/dsh-tools` `ToolRuntime`, registers the guard, and asserts a denied write returns a tool error |
 | Lease trade-off is measured | `npm run bench`: 30/30 conflict recall, 30/30 false positives on clean same-file edits; the merge gate is 0/30 on those |
+| Security regressions are tested | approval-role forgery, body-supplied verify, private-memory event leak, forged snapshot, cross-task mandate and unauthenticated rate limiting each have a test |
 | Coverage | **76.4% lines / 64.8% branches / 73.2% functions** (Node experimental coverage) |
 
 Reproduce:

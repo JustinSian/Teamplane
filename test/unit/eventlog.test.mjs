@@ -88,3 +88,34 @@ test('the log rotates into segments and still verifies', () => {
   writeFileSync(first, lines.join(String.fromCharCode(10)))
   assert.throws(() => EventLog.open(dir, { maxSegmentEvents: 3 }), /hash mismatch/)
 })
+
+test('a forged snapshot is ignored because startup replays the chain', () => {
+  const { dir, log } = makeLog()
+  log.append('policy.updated', 'system', defaultPolicy())
+  log.append('principal.created', 'system', {
+    id: 'usr_real',
+    kind: 'user',
+    display: 'alice',
+    tokenHash: 'hash',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    disabled: false,
+  })
+  log.close()
+
+  const snapshotPath = join(dir, 'snapshot.json')
+  const snapshot = JSON.parse(readFileSync(snapshotPath, 'utf8'))
+  snapshot.state.principals.push({
+    id: 'usr_evil',
+    kind: 'user',
+    display: 'mallory',
+    tokenHash: 'forged',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    disabled: false,
+  })
+  writeFileSync(snapshotPath, JSON.stringify(snapshot))
+
+  const reopened = EventLog.open(dir)
+  assert.equal(reopened.state.principals.has('usr_real'), true)
+  assert.equal(reopened.state.principals.has('usr_evil'), false)
+  reopened.close()
+})

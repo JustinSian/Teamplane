@@ -53,6 +53,23 @@ test('HTTP surface: auth, policy, leases, memory, audit and MCP', async (t) => {
   })
   assert.equal(task.status, 201)
 
+  const issued = await call('/v1/mandates', {
+    method: 'POST',
+    body: JSON.stringify({ subject: me.body.principal.id, task: task.body.id, paths: ['src/auth.ts'], ttlSeconds: 60 }),
+  })
+  assert.equal(issued.status, 201)
+  assert.ok(issued.body.token)
+  const listed = await call('/v1/mandates')
+  assert.ok(listed.body.mandates.length >= 1)
+  assert.ok(listed.body.mandates.every((mandate) => mandate.token === undefined))
+
+  const submitWithVerify = await call(`/v1/tasks/${task.body.id}/submit`, {
+    method: 'POST',
+    body: JSON.stringify({ verify: ['echo PWNED'], requireLease: false }),
+  })
+  assert.equal(submitWithVerify.status, 422)
+  assert.equal(submitWithVerify.body.error.code, 'verify_task_bound')
+
   const lease = await call('/v1/leases', {
     method: 'POST',
     body: JSON.stringify({ key: 'file:src/auth.ts', task: task.body.id, ttlSeconds: 60 }),
@@ -66,6 +83,13 @@ test('HTTP surface: auth, policy, leases, memory, audit and MCP', async (t) => {
   assert.equal(conflict.status, 409)
   assert.equal(conflict.body.error.code, 'lease_conflict')
 
+  const approval = await call('/v1/approvals', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'git.push', resource: 'branch:main', requiredRole: 'agent', fields: { request: { force: true } } }),
+  })
+  assert.equal(approval.status, 201)
+  assert.equal(approval.body.requiredRole, 'owner')
+
   const memory = await call('/v1/memory', {
     method: 'POST',
     body: JSON.stringify({ kind: 'decision', topic: 'rotation', text: 'Rotate on use.', visibility: 'team', namespace: 'team' }),
@@ -75,6 +99,25 @@ test('HTTP surface: auth, policy, leases, memory, audit and MCP', async (t) => {
   const search = await call('/v1/memory/search?q=rotation')
   assert.equal(search.status, 200)
   assert.ok(search.body.results.length >= 1)
+
+  await call('/v1/memory', {
+    method: 'POST',
+    body: JSON.stringify({
+      kind: 'decision',
+      topic: 'layoff',
+      text: 'PRIVATE: layoff list ships friday',
+      visibility: 'private',
+      namespace: 'team',
+    }),
+  })
+  const ownerEvents = await call('/v1/events?types=memory.written')
+  assert.ok(ownerEvents.body.events.some((event) => event.data?.text?.includes('layoff list')))
+  const bobEvents = await fetch(`${running.url}/v1/events?types=memory.written`, {
+    headers: { authorization: `Bearer ${created.body.token}` },
+  }).then((response) => response.json())
+  assert.ok(bobEvents.events.length >= 1)
+  assert.ok(!bobEvents.events.some((event) => event.data?.text?.includes('layoff list')))
+  assert.ok(bobEvents.events.some((event) => event.data?.redacted === true))
 
   const audit = await call('/v1/audit/verify')
   assert.equal(audit.status, 200)

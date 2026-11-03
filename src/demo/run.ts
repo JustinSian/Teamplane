@@ -73,8 +73,8 @@ export async function runDemo(options: DemoOptions = {}): Promise<number> {
       return `bob=${bobId} carol=${carolId}`
     })
 
-    const taskA = (await alice.createTask({ title: 'Refactor auth token rotation', repoPath: repo, baseBranch: 'main' })).id as string
-    const taskB = (await alice.createTask({ title: 'Add auth tests', repoPath: repo, baseBranch: 'main', assignee: bobId })).id as string
+    const taskA = (await alice.createTask({ title: 'Refactor auth token rotation', repoPath: repo, baseBranch: 'main', verify: ['node -e "process.exit(0)"'] })).id as string
+    const taskB = (await alice.createTask({ title: 'Add auth tests', repoPath: repo, baseBranch: 'main', assignee: bobId, verify: ['node -e "process.exit(1)"'] })).id as string
     const taskC = (await alice.createTask({ title: 'Document the auth flow', repoPath: repo, baseBranch: 'main', assignee: carolId })).id as string
     await step('create three tasks', () => `${taskA}, ${taskB}, ${taskC}`)
 
@@ -173,12 +173,11 @@ export async function runDemo(options: DemoOptions = {}): Promise<number> {
     await step('force push requires an owner approval, exactly once', async () => {
       const before = (await bobM.authorize('git.push', 'branch:main', { request: { force: true } })) as { decision: string }
       expect(before.decision === 'ask', `expected ask, got ${before.decision}`)
-      const approval = await bobM.requestApproval({ action: 'git.push', resource: 'branch:main' })
+      const approval = await bobM.requestApproval({ action: 'git.push', resource: 'branch:main', fields: { request: { force: true } } })
       const approvalId = approval.id as string
       await alice.resolveApproval(approvalId, true, 'one-off force push for a rebase')
       const after = (await bobM.authorize('git.push', 'branch:main', { request: { force: true } }, approvalId)) as { decision: string }
       expect(after.decision === 'allow', `expected allow after approval, got ${after.decision}`)
-      await bobM.post(`/v1/approvals/${approvalId}/consume`, { action: 'git.push', resource: 'branch:main' })
       const replay = (await bobM.authorize('git.push', 'branch:main', { request: { force: true } }, approvalId)) as { decision: string }
       expect(replay.decision === 'ask', `expected ask on replay, got ${replay.decision}`)
       return `ask -> approved -> allow -> replay ${replay.decision}`
@@ -188,7 +187,7 @@ export async function runDemo(options: DemoOptions = {}): Promise<number> {
       const worktree = join(root, '.teamplane-worktrees', taskA)
       writeFileSync(join(worktree, 'src', 'auth.ts'), 'export function rotateToken(token: string): string {\n  return `${token}:rotated`\n}\n')
       gitCommit(worktree, 'refactor auth rotation')
-      const result = (await aliceM.submit(taskA, { verify: ['node -e "process.exit(0)"'], merge: true })) as { ok: boolean; merged: boolean; changedFiles: string[] }
+      const result = (await aliceM.submit(taskA, { merge: true })) as { ok: boolean; merged: boolean; changedFiles: string[] }
       expect(result.ok && result.merged, `submit failed: ${JSON.stringify(result)}`)
       return `merged ${result.changedFiles.join(', ')}`
     })
@@ -198,13 +197,14 @@ export async function runDemo(options: DemoOptions = {}): Promise<number> {
       mkdirSync(join(worktree, 'tests', 'auth'), { recursive: true })
       writeFileSync(join(worktree, 'tests', 'auth', 'rotation.test.ts'), 'test("rotation", () => {})\n')
       gitCommit(worktree, 'add auth tests')
-      const result = (await bobM.submit(taskB, { verify: ['node -e "process.exit(1)"'] })) as { ok: boolean; reason: string }
+      const result = (await bobM.submit(taskB, {})) as { ok: boolean; reason: string }
       expect(!result.ok, 'expected verification failure')
       return result.reason
     })
 
     await step('verification passes and the work is accepted', async () => {
-      const result = (await bobM.submit(taskB, { verify: ['node -e "process.exit(0)"'] })) as { ok: boolean; reason: string }
+      await aliceM.post(`/v1/tasks/${taskB}/verify`, { verify: ['node -e "process.exit(0)"'] })
+      const result = (await bobM.submit(taskB, {})) as { ok: boolean; reason: string }
       expect(result.ok, `expected success, got ${result.reason}`)
       return result.reason
     })

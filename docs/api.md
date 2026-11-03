@@ -27,7 +27,7 @@ Principal tokens are printed once by `init` / `user add`, stored only as SHA-256
 | 422 | validation error (policy, memory, body) |
 | 428 | approval required (`ask`) |
 | 413 | body over 1 MiB |
-| 429 | per-principal rate limit; honour `Retry-After` |
+| 429 | per-principal or per-IP rate limit; honour `Retry-After` |
 
 ## Endpoints
 
@@ -38,6 +38,7 @@ Principal tokens are printed once by `init` / `user add`, stored only as SHA-256
 | POST | `/v1/principals` | create user/agent/service |
 | GET | `/v1/principals` | list principals with roles |
 | POST | `/v1/roles/grant` | grant a role (owner only) |
+| POST | `/v1/principals/:id/disable` | disable a principal (owner only) |
 | GET | `/v1/policy` | current policy |
 | PUT | `/v1/policy` | replace policy (version increments) |
 | POST | `/v1/policy/explain` | explain a decision, no side effects |
@@ -45,9 +46,10 @@ Principal tokens are printed once by `init` / `user add`, stored only as SHA-256
 | POST | `/v1/mandates` | issue a mandate |
 | POST | `/v1/mandates/:id/derive` | attenuate a mandate |
 | POST | `/v1/mandates/:id/revoke` | revoke (owner) |
-| GET | `/v1/mandates` | list mandates |
+| GET | `/v1/mandates` | list mandates (never returns signed tokens) |
 | POST | `/v1/tasks` | create a task |
 | GET | `/v1/tasks` | list tasks |
+| POST | `/v1/tasks/:id/verify` | replace the task-bound verification commands (authorized) |
 | POST | `/v1/tasks/:id/start` | create worktree + context |
 | POST | `/v1/tasks/:id/launched` | record a launched runtime (command, pid) |
 | POST | `/v1/tasks/:id/submit` | leases + merge-tree + verify + merge |
@@ -58,10 +60,10 @@ Principal tokens are printed once by `init` / `user add`, stored only as SHA-256
 | POST | `/v1/memory` | write a curated fragment |
 | GET | `/v1/memory/search?q=` | ACL-filtered search |
 | GET | `/v1/memory/conflicts` | recorded contradictions |
-| POST | `/v1/approvals` | request approval |
+| POST | `/v1/approvals` | request approval (role comes from policy; body cannot choose it) |
 | GET | `/v1/approvals` | list |
 | POST | `/v1/approvals/:id/resolve` | approve/reject |
-| POST | `/v1/approvals/:id/consume` | mark an approval used |
+| POST | `/v1/approvals/:id/consume` | manual consumption; `/v1/authorize` consumes by default |
 | GET | `/v1/events?since=&types=` | structured events |
 | GET | `/v1/stream?token=&types=` | SSE stream |
 | GET | `/v1/audit/verify` | hash-chain verification |
@@ -132,7 +134,7 @@ curl -s http://127.0.0.1:7317/v1/tasks/tsk_123/submit \
   -H "authorization: Bearer $BOB_TOKEN" \
   -H "x-teamplane-mandate: $BOB_MANDATE" \
   -H 'content-type: application/json' \
-  -d '{"verify":["npm test"],"merge":true}'
+  -d '{"merge":true}'
 ```
 
 ```json
@@ -148,6 +150,8 @@ curl -s http://127.0.0.1:7317/v1/tasks/tsk_123/submit \
 ```
 
 `ok: false` is a normal gate outcome (HTTP 200); inspect `conflicts`, `verify` and `reason`.
+
+`verify` is **not** accepted in the submit body. Commands are bound to the task at creation (`POST /v1/tasks` with `verify`) and can be changed through `POST /v1/tasks/:id/verify` by an authorized principal. A submit that carries `verify` returns `422 verify_task_bound`.
 
 ### Stream events
 

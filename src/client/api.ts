@@ -125,6 +125,10 @@ export class ApiClient {
     return this.get('/v1/tasks')
   }
 
+  setTaskVerify(id: string, verify: string[]): Promise<Record<string, unknown>> {
+    return this.post(`/v1/tasks/${encodeURIComponent(id)}/verify`, { verify })
+  }
+
   startTask(id: string, mandateId?: string): Promise<Record<string, unknown>> {
     return this.post(`/v1/tasks/${encodeURIComponent(id)}/start`, { mandateId })
   }

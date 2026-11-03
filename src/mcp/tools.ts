@@ -118,10 +118,11 @@ export const TOOLS: McpToolDefinition[] = [
         action: { type: 'string', description: 'e.g. git.push' },
         resource: { type: 'string', description: 'e.g. branch:main' },
         ttlSeconds: { type: 'number' },
+        fields: { type: 'object', description: 'Policy fields, e.g. {"request":{"force":true}}' },
       },
       required: ['action', 'resource'],
     },
-    call: (api, args) => api.post('/v1/approvals', { action: args.action, resource: args.resource, ttlSeconds: args.ttlSeconds }),
+    call: (api, args) => api.post('/v1/approvals', { action: args.action, resource: args.resource, ttlSeconds: args.ttlSeconds, fields: args.fields ?? {} }),
   },
   {
     name: 'tp_events_poll',

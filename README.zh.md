@@ -139,11 +139,11 @@ teamplane serve                # http://127.0.0.1:7317
 ```bash
 export TEAMPLANE_TOKEN="tp_..."
 teamplane user add --name bob --role maintainer
-teamplane task create --title "refactor auth" --repo .
+teamplane task create --title "refactor auth" --repo . --verify "npm test"
 teamplane mandate issue --subject <bob-id> --task <task-id> --paths src/auth.ts --ttl 1h
 teamplane task start <task-id> --id <mandate-id>
 teamplane lease acquire --key file:src/auth.ts --task <task-id> --ttl 15m
-teamplane submit <task-id> --verify "npm test" --merge
+teamplane submit <task-id> --merge
 teamplane audit verify
 ```
 
@@ -192,7 +192,7 @@ Agent 会拿到十个工具：`tp_whoami`、`tp_task_start`、`tp_lease_acquire`
 
 | 声明 | 证据 |
 |---|---|
-| 协调不变量成立 | `npm test` — **29/29** |
+| 协调不变量成立 | `npm test` — **31/31** |
 | 端到端行为 | `npm run demo` — **16/16** 步，2.7 秒 |
 | MCP 双传输 | `npm run mcp:smoke` — 10 个工具 |
 | 同一租约只有一个赢家 | 50 并发：**1 × 201，49 × 409** |
