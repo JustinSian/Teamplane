@@ -1,0 +1,28 @@
+name: Feature or scenario
+description: Propose a capability, or describe a coordination failure you want the design to survive.
+title: "feat: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: scenario
+    attributes:
+      label: Scenario
+      description: Describe the real situation, the actors and what goes wrong today. A failing scenario is more useful than a feature name.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behaviour
+  - type: textarea
+    id: invariants
+    attributes:
+      label: Which invariant should hold?
+      description: Authority, leases, memory visibility, audit, or "none of these".
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - label: This does not require a model call in the decision path.
+        - label: This can be tested without a running model.

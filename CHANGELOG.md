@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.2.0 — 2026-11-03
+
+The product surface release. Everything in 0.1.0 still holds; this adds the path from "clone" to "a team I can act on".
+
+### Added
+
+- **`teamplane playground`**: seeds a realistic team (4 tasks, 3 principals, 2 live leases, 3 memory fragments, 1 pending approval, a real denial) and serves the console on one command. `--open` launches the browser, `--keep` preserves the temp workspace.
+- **Console write actions**: approve/reject pending approvals, create tasks, token-in-URL onboarding, snapshot mode for screenshots.
+- **GitHub Action** (`action.yml`): fail-closed audit-chain verification for CI.
+- **Landing page** (`site/`) and **Pages workflow**; social preview and real console screenshots.
+- **Release workflow**: tests, demo, MCP smoke, npm pack, git bundle, GitHub Release on tags.
+- **Product docs**: `STATUS.md` (readiness + evidence + not-evaluated), `PRODUCT.md` (personas, journeys, metrics), `ROADMAP.md`, `docs/why.md`, `docs/comparison.md`.
+- **Examples**: DSH MCP patch, strict policy, GitHub Actions verification.
+- **Screenshot tooling** (`scripts/screenshot.mjs`) using the DevTools protocol, no browser dependency in the package.
+
+### Fixed
+
+- The console gate stayed visible over the app because author CSS overrode the `hidden` attribute. Real screenshot testing caught it; `[hidden] { display: none !important; }` fixes it.
+- Force-push is no longer in the DSH guard's default deny list: the guard is synchronous and cannot consult an approval. It is configurable via `guard.json`.
+
+### Changed
+
+- Version bumped to 0.2.0; status badges and docs point at the new release.
+- Test count 23 → 24 (playground integration).
+
 ## 0.1.0 — 2026-11-03
 
 First public, research-grade release.

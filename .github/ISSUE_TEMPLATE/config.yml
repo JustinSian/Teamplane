@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/JustinSian/Teamplane/security/advisories/new
+    about: Please report vulnerabilities privately, not in a public issue.
+  - name: Read the threat model first
+    url: https://github.com/JustinSian/Teamplane/blob/main/docs/threat-model.md
+    about: Many "isn't this insecure?" questions are already answered there.

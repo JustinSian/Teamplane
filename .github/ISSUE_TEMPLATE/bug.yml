@@ -1,0 +1,50 @@
+name: Bug report
+description: Something is wrong in the control plane, CLI, console or MCP surface.
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not paste tokens, signing keys or private repository contents. Redact the event log before attaching it.
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      placeholder: 0.2.0 or a commit sha
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Surface
+      options: [CLI, HTTP API, Web console, MCP, DSH guard, demo/playground, packaging]
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: Include the command, the error code and the relevant event types.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Prefer `teamplane playground` steps or a failing test over prose.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety
+      options:
+        - label: I removed tokens, keys and private data from this report.
+          required: true

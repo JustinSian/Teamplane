@@ -2,7 +2,9 @@
 
 **多主体 Agent 团队的确定性控制平面。**
 
-> English: [README.md](README.md)
+> English: [README.md](README.md) · 状态与边界见 [STATUS.md](STATUS.md)
+
+<img src="docs/assets/social.png" alt="Teamplane — 签名 Mandate、确定性门禁、结构化事件" width="100%" />
 
 你的 Agent 们共享一个仓库，但不共享一个大脑。
 
@@ -24,15 +26,22 @@ Teamplane 站在反面：
 
 ---
 
-## 60 秒演示
+## 60 秒体验
 
 ```bash
-git clone https://github.com/JustinSian/teamplane.git
-cd teamplane
-npm install
-npm run build
-npm run demo
+git clone https://github.com/JustinSian/Teamplane.git
+cd Teamplane
+npm install && npm run build && npm link
+teamplane playground --open
 ```
+
+浏览器里会出现一个已经跑起来的团队：四个工单、两个活跃租约、一个待审批、一份团队记忆和实时事件流。点一下 **Approve**，事件流会立刻变化。
+
+没有模型 key，没有 Docker，没有云账号。
+
+<img src="docs/assets/console.png" alt="Teamplane 控制台" width="100%" />
+
+命令行版本：`npm run demo` 会无头跑同一套场景，并把报告写到 `demo/out/report.md`。
 
 演示会创建一个真实 git 仓库、三个主体（alice / bob / carol）、三个 worktree、三张签名 Mandate，并在临时端口起一个控制平面，逐步证明：
 
@@ -178,6 +187,20 @@ Agent 会拿到十个工具：`tp_whoami`、`tp_task_start`、`tp_lease_acquire`
 - 不替代代码评审。它门控“谁能合并什么”，不判断“代码好不好”。
 
 ---
+
+## 现状与证据
+
+| 声明 | 证据 |
+|---|---|
+| 协调不变量成立 | `npm test` — **24/24** |
+| 端到端行为 | `npm run demo` — **16/16** 步，2.7 秒 |
+| MCP 双传输 | `npm run mcp:smoke` — 10 个工具 |
+| 同一租约只有一个赢家 | 50 并发：**1 × 201，49 × 409** |
+| 不同资源互不阻塞 | 50 个不同 key：**50 × 201** |
+| 决策延迟 | `/v1/authorize` **0.59 ms/次**（本机 loopback） |
+| 覆盖率 | 行 **76.4%** / 分支 **64.8%** |
+
+这些是自测数据，可复现；**没有**做真实模型循环、多机 soak、红队和独立基准。完整清单见 [STATUS.md](STATUS.md)，产品定义见 [PRODUCT.md](PRODUCT.md)，路线图见 [ROADMAP.md](ROADMAP.md)。
 
 ## 设计文档
 

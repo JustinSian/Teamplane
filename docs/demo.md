@@ -2,6 +2,8 @@
 
 `npm run demo` is not a screenshot. It builds a real repository, starts a real control plane on an ephemeral port, and drives the HTTP API as three different principals. Every assertion is executable; a failure exits non-zero.
 
+For the interactive version, run `teamplane playground --open`: the same seeded team, served at `http://127.0.0.1:<port>/` with a pending approval you can click. The console's "snapshot" mode (`?nostream=1`) is what produced `docs/assets/console.png`; it disables SSE so the page can be captured deterministically.
+
 ## Setup
 
 - A temporary git repository with `src/auth.ts`, `src/api.ts`, `tests/auth.test.ts`, `docs/README.md`.
