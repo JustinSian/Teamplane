@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.8 — 2026-11-03
+
+### Added
+
+- **Secret scanning in CI**: `.github/workflows/security.yml` runs a dependency-free scanner over tracked files and full git history. It reports file/line/pattern, never the matched value.
+- **Local commands**: `npm run scan:secrets` and `npm run scan:secrets:history`.
+- **Hardened .gitignore**: `.env*`, `*.key`, `*.pem`, `*.p12`, `*.pfx`, `.npmrc`, `.pypirc`, `secrets/`, `id_rsa*`, `token.json`, `credentials.json`.
+- The console no longer prefills a local absolute repository path, and the tasks screenshot was regenerated without it.
+
+### Changed
+
+- Version 0.2.8; tests remain 29; `scan:secrets` and `scan:secrets:history` are clean.
+
 ## 0.2.7 — 2026-11-03
 
 ### Added

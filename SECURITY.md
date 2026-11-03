@@ -51,3 +51,19 @@ See [docs/threat-model.md](docs/threat-model.md) for T1–T13 and the deployment
 - Install `dsh-teamplane-guard` (or an equivalent host guard) for every writing runtime.
 - Anchor the output of `teamplane audit verify` in CI or a signed release.
 - Review `memory.conflict` events; they are the earliest signal of a poisoned or divided team memory.
+
+## Secret scanning
+
+Two layers:
+
+- **CI**: `.github/workflows/security.yml` runs `node scripts/scan-secrets.mjs` over tracked files and `node scripts/scan-secrets.mjs --history` over every commit. It reports the file, line and pattern name, never the value.
+- **GitHub**: enable **Settings → Code security → Secret scanning** and **Push protection** for the repository. Public repositories get these free; push protection blocks a token before it lands.
+
+Run locally:
+
+```bash
+npm run scan:secrets
+npm run scan:secrets:history
+```
+
+If a secret ever lands: **revoke it first**, then rotate, then remove it from history. Deleting the commit does not un-leak a key that was already public.

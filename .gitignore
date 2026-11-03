@@ -7,3 +7,15 @@ demo/out/
 .DS_Store
 Thumbs.db
 coverage/
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+.npmrc
+.pypirc
+secrets/
+id_rsa*
+token.json
+credentials.json

@@ -1,6 +1,6 @@
 {
   "name": "teamplane",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "A deterministic control plane for multi-user agent teams: signed mandates, resource leases, permissioned memory and an auditable merge gate.",
   "keywords": [
     "agents",
@@ -55,7 +55,9 @@
     "demo:ci": "npm run build && node bin/teamplane.js demo --ci",
     "mcp:smoke": "npm run build && node scripts/mcp-smoke.mjs",
     "bench": "node bench/conflict-replay.mjs",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "scan:secrets": "node scripts/scan-secrets.mjs",
+    "scan:secrets:history": "node scripts/scan-secrets.mjs --history"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.5",

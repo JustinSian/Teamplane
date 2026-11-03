@@ -69,6 +69,7 @@ npm test && npm run demo:ci && npm run mcp:smoke
 
 - [ ] **Settings → Pages**: Source = *GitHub Actions*. The `pages` workflow deploys `site/` on every push to `main`.
 - [ ] **Settings → General → Social preview**: upload `docs/assets/social.png` (1280×640). GitHub does not accept SVG here.
+- [ ] **Settings → Code security**: enable **Secret scanning** and **Push protection** (free for public repositories).
 - [ ] **About**: description from `package.json`, website = the Pages URL, topics: `agents` `multi-agent` `mcp` `deepseek-harness` `authorization` `capability` `coordination` `ai-agents`.
 - [ ] **Actions**: confirm `ci`, `pages` and (after a tag) `release` are green.
 - [ ] **Releases**: publish the existing `v0.1.0` tag as a release, or tag `v0.2.0` after the product-surface changes.

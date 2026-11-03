@@ -1,0 +1,21 @@
+name: security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Scan tracked files
+        run: node scripts/scan-secrets.mjs
+      - name: Scan git history
+        run: node scripts/scan-secrets.mjs --history

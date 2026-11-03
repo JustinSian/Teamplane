@@ -85,7 +85,6 @@ async function refresh() {
     $('stat-events').textContent = String(snapshot.events ?? 0)
     renderTasks(snapshot.tasks ?? [])
     renderApprovals(snapshot.approvals ?? [])
-    if (!$('task-repo').value && snapshot.tasks?.[0]?.repoPath) $('task-repo').placeholder = snapshot.tasks[0].repoPath
 
     const principals = await api('/v1/principals')
     state.principals = principals.principals ?? []
