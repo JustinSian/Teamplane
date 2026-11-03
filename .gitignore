@@ -19,3 +19,6 @@ secrets/
 id_rsa*
 token.json
 credentials.json
+
+# local verification artifacts
+tmp-check/
