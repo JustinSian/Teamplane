@@ -26,7 +26,7 @@ teamplane playground --open
 
 A seeded team appears in your browser: four tasks, two live leases, one pending approval, a memory store, and a live event feed. Click **Approve** and watch the event stream change.
 
-No model keys. No Docker. No cloud account.
+No model keys. No cloud account. Docker is optional.
 
 Prefer the command line? `npm run demo` runs the same scenario headlessly and writes `demo/out/report.md`.
 
@@ -164,7 +164,7 @@ A shared control plane is the same row with `transport: streamable-http` and `ur
 
 ```yaml
 - name: Verify the Teamplane event log
-  uses: JustinSian/Teamplane@v0.5.0
+  uses: JustinSian/Teamplane@v0.5.1
   with:
     control-plane-url: ${{ vars.TEAMPLANE_URL }}
     token: ${{ secrets.TEAMPLANE_TOKEN }}
@@ -199,6 +199,23 @@ teamplane submit <task-id> --merge
 teamplane audit verify
 ```
 
+## Deploy
+
+The default bind is `127.0.0.1:7317`. For a shared host, run the control plane as a
+dedicated user or container, publish the port on loopback, and terminate TLS in
+front:
+
+```bash
+mkdir -p workspace/repo
+docker compose run --rm control-plane \
+  init --dir /workspace/repo --name acme --owner alice --host 0.0.0.0
+docker compose up -d
+```
+
+Read [docs/deployment.md](docs/deployment.md) first: it covers the threat model,
+backups (workspace **and** keys), Windows ACLs, and what is deliberately not
+enforced.
+
 ---
 
 ## Docs
@@ -214,6 +231,7 @@ teamplane audit verify
 | [docs/design-notes.md](docs/design-notes.md) | prior art and what would falsify the design |
 | [docs/comparison.md](docs/comparison.md) | Dust, Tencent Team Memory, Super-agent, plain subagents |
 | [docs/launch.md](docs/launch.md) | the launch argument, with evidence and caveats |
+| [docs/deployment.md](docs/deployment.md) | TLS, containers, backups, permissions, incident checklist |
 | [docs/policy.md](docs/policy.md) · [docs/api.md](docs/api.md) · [docs/mcp.md](docs/mcp.md) | contracts |
 
 Related work that shaped this: Collaborative Memory (ICML'25), MERGEGYM, ScopeGate, DelegateGuard, and DeepSeek Harness's Super-agent. Teamplane extends the Super-agent *Mandate* from one user to many principals and moves the gate out of the model.
@@ -222,7 +240,7 @@ Related work that shaped this: Collaborative Memory (ICML'25), MERGEGYM, ScopeGa
 
 ## Status
 
-`0.5.0` — **research preview**, single node, pre-1.0. The event log is segmented; startup replays the chain. Interfaces may change before `1.0`.
+`0.5.1` — **research preview**, single node, pre-1.0. The event log is segmented; startup replays the chain. Interfaces may change before `1.0`.
 
 If you build on it, pin a commit and read [SECURITY.md](SECURITY.md) and [STATUS.md](STATUS.md). The repository also runs a dependency-free secret scan in CI: `npm run scan:secrets` and `npm run scan:secrets:history`.
 

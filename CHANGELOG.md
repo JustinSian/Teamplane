@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.1 — 2026-11-03
+
+### Added
+
+- `docs/deployment.md`: threat-model summary, loopback/TLS guidance, backup rules (workspace **and** keys), Windows ACL commands, container layout, upgrade path, incident checklist.
+- Multi-stage `Dockerfile` and `docker-compose.yml`: non-root `node` user, loopback-only published port, keys in a named volume, `git` in the runtime image, healthcheck.
+- `.dockerignore` keeps local state and worktrees out of the build context.
+
+### Changed
+
+- README deploy section and docs index link to the deployment guide.
+- Version 0.5.1; no runtime behavior change.
+
 ## 0.5.0 — 2026-11-03
 
 ### Changed

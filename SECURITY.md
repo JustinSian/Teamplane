@@ -45,12 +45,12 @@ What it does **not** enforce:
 - Semantic correctness of a merge.
 - Confidentiality against a compromised host or signing key.
 
-See [docs/threat-model.md](docs/threat-model.md) for T1–T13 and the deployment checklist.
+See [docs/threat-model.md](docs/threat-model.md) for T1–T13 and [docs/deployment.md](docs/deployment.md) for TLS, containers, backups and ACLs.
 
 ## Hardening checklist
 
 - Bind the server to `127.0.0.1` unless TLS terminates in front of it.
-- Keep `.teamplane/` out of version control; `keys/root.key` must be `0600`.
+- Keep `.teamplane/` out of version control. Signing keys live outside the workspace (`~/.teamplane/keys/<id>/`) and must be `0600`; on Windows use `icacls`, not `mode`.
 - Short TTLs: leases 15–60 min, mandates 1–8 h, approvals 30 min.
 - One token per principal; create a new principal and disable the old one to rotate.
 - Install `dsh-teamplane-guard` (or an equivalent host guard) for every writing runtime.

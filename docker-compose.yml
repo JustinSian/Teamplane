@@ -1,0 +1,30 @@
+name: teamplane
+
+services:
+  control-plane:
+    build:
+      context: .
+    image: teamplane:0.5.1
+    init: true
+    user: "${TEAMPLANE_UID:-1000}:${TEAMPLANE_GID:-1000}"
+    working_dir: /workspace/repo
+    command: ["serve"]
+    ports:
+      # Loopback only. Put a TLS reverse proxy in front for remote access.
+      - "127.0.0.1:7317:7317"
+    volumes:
+      - ./workspace:/workspace
+      - teamplane-keys:/data/keys
+    environment:
+      TEAMPLANE_KEYS_DIR: /data/keys
+      NODE_ENV: production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:7317/healthz').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  teamplane-keys:
