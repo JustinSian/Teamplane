@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.7 — 2026-11-03
+
+### Added
+
+- **Mandates tab**: list signed mandates with subject, task, paths, expiry and a one-click revoke.
+- **Start a task** from the console: choose a task and an active mandate, create/reuse its worktree.
+- Screenshot of the mandates tab (`docs/assets/console-mandates.png`).
+
+### Changed
+
+- Version 0.2.7; tests remain 29.
+
 ## 0.2.6 — 2026-11-03
 
 ### Added

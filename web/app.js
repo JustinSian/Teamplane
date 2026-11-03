@@ -7,6 +7,7 @@ const state = {
   noStream: false,
   policyDirty: false,
   principals: [],
+  mandates: [],
 }
 
 async function api(path, options = {}) {
@@ -97,6 +98,18 @@ async function refresh() {
       (snapshot.tasks ?? []).map((task) => ({ value: task.id, label: `${task.id} — ${task.title}` })),
     )
 
+    const mandates = await api('/v1/mandates')
+    state.mandates = mandates.mandates ?? []
+    renderMandates(state.mandates)
+    fillSelect(
+      $('start-task'),
+      (snapshot.tasks ?? []).filter((task) => task.status !== 'merged' && task.status !== 'closed').map((task) => ({ value: task.id, label: `${task.id} — ${task.title}` })),
+    )
+    fillSelect(
+      $('start-mandate'),
+      state.mandates.filter((mandate) => !mandate.revokedAt).map((mandate) => ({ value: mandate.id, label: `${mandate.id} — ${mandate.claims.subject}` })),
+    )
+
     const policy = await api('/v1/policy')
     if (!state.policyDirty) $('policy-editor').value = JSON.stringify(policy, null, 2)
     if (state.noStream) {
@@ -163,6 +176,59 @@ async function savePolicy() {
     status.textContent = `applied version ${saved.version}`
   } catch (error) {
     status.textContent = error.message
+  }
+}
+
+function renderMandates(mandates) {
+  const body = $('mandates-table').querySelector('tbody')
+  body.replaceChildren()
+  for (const mandate of mandates) {
+    const tr = document.createElement('tr')
+    tr.append(element('td', 'mono', short(mandate.id)))
+    tr.append(element('td', 'mono', short(mandate.claims.subject)))
+    tr.append(element('td', 'mono', short(mandate.claims.task)))
+    const paths = element('td', '', (mandate.claims.scope.paths ?? []).join(', '))
+    tr.append(paths)
+    const expires = element('td', 'mono', mandate.claims.exp)
+    tr.append(expires)
+    const action = element('td')
+    if (mandate.revokedAt) {
+      action.append(badge('revoked', 'bad'))
+    } else {
+      const revoke = element('button', 'mini ghost', 'Revoke')
+      revoke.addEventListener('click', () => revokeMandate(mandate.id))
+      action.append(revoke)
+    }
+    tr.append(action)
+    body.append(tr)
+  }
+}
+
+async function revokeMandate(id) {
+  try {
+    await api(`/v1/mandates/${encodeURIComponent(id)}/revoke`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: 'revoked in console' }),
+    })
+    await refresh()
+  } catch (error) {
+    $('live-label').textContent = error.message
+  }
+}
+
+async function startTask(event) {
+  event.preventDefault()
+  const taskId = $('start-task').value
+  const mandateId = $('start-mandate').value
+  if (!taskId || !mandateId) return
+  try {
+    await api(`/v1/tasks/${encodeURIComponent(taskId)}/start`, {
+      method: 'POST',
+      body: JSON.stringify({ mandateId }),
+    })
+    await refresh()
+  } catch (error) {
+    $('live-label').textContent = error.message
   }
 }
 
@@ -367,6 +433,7 @@ function boot() {
   }
   $('task-form').addEventListener('submit', createTask)
   $('mandate-form').addEventListener('submit', issueMandate)
+  $('start-form').addEventListener('submit', startTask)
   $('policy-save').addEventListener('click', savePolicy)
   $('policy-editor').addEventListener('input', () => {
     state.policyDirty = true

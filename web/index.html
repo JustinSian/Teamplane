@@ -31,6 +31,7 @@
         <nav class="tabs" role="tablist">
           <button class="tab active" data-tab="overview" role="tab">Overview</button>
           <button class="tab" data-tab="tasks" role="tab">Tasks</button>
+          <button class="tab" data-tab="mandates" role="tab">Mandates</button>
           <button class="tab" data-tab="memory" role="tab">Memory</button>
           <button class="tab" data-tab="policy" role="tab">Policy</button>
           <button class="tab" data-tab="audit" role="tab">Audit</button>
@@ -83,7 +84,24 @@
             <input id="task-repo" placeholder="Repository path (optional)" />
             <button type="submit">Create task</button>
           </form>
+          <section class="block" style="margin-bottom: 16px">
+            <h2>Start a task</h2>
+            <form id="start-form" class="grid-form">
+              <label>Task<select id="start-task"></select></label>
+              <label>Mandate<select id="start-mandate"></select></label>
+              <button type="submit">Start task</button>
+            </form>
+          </section>
           <div class="table-wrap"><table id="tasks-table"><thead><tr><th>Task</th><th>Status</th><th>Mandate</th><th>Worktree</th></tr></thead><tbody></tbody></table></div>
+        </section>
+
+        <section id="tab-mandates" class="panel">
+          <div class="table-wrap">
+            <table id="mandates-table">
+              <thead><tr><th>Mandate</th><th>Subject</th><th>Task</th><th>Paths</th><th>Expires</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </section>
 
         <section id="tab-memory" class="panel">
