@@ -16,11 +16,12 @@ From "working reference implementation" to "team product people star and use". E
 
 **Goal:** a team can onboard without the author in the room.
 
-- [ ] **Dispatch**: `task start --launch dsh` starts the runtime in the worktree, records the session id, streams its events; generic `--exec` for other runtimes.
+- [x] **Dispatch (basic)**: `task launch <id> -- dsh` starts the runtime in the worktree and records a launch event.
+- [ ] **Dispatch (sessions)**: stream the runtime's session id and events back into the task timeline.
 - [ ] **Guard in the loop**: install `dsh-teamplane-guard` in a real profile; record an intercepted write as an event; document the exact steps.
 - [ ] **Console completeness**: issue mandate, edit policy, start task, resolve approvals with a comment; keyboard-free onboarding.
 - [ ] **Operability**: log rotation and segmentation, per-principal rate limits, `/healthz` detail page, TLS reverse-proxy guide.
-- [ ] **SSE resume** with `Last-Event-ID`; polling fallback.
+- [x] **SSE resume** with `Last-Event-ID`; `since` query for custom clients.
 - [ ] **npm publish** + `npx teamplane playground`; signed release artifacts.
 - [ ] **CI green on the public repo**; Pages deployed; social preview set.
 

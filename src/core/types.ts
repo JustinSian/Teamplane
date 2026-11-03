@@ -121,6 +121,15 @@ export interface Task {
   updatedAt: string
 }
 
+export interface Launch {
+  id: string
+  task: string
+  command: string
+  pid: number | null
+  actor: string
+  startedAt: string
+}
+
 export type LeaseMode = 'exclusive' | 'shared'
 
 export interface Lease {
@@ -185,6 +194,7 @@ export type EventType =
   | 'mandate.revoked'
   | 'task.created'
   | 'task.started'
+  | 'task.launched'
   | 'task.status'
   | 'lease.acquired'
   | 'lease.denied'
@@ -218,6 +228,7 @@ export interface State {
   policy: Policy
   mandates: Map<string, MandateRecord>
   tasks: Map<string, Task>
+  launches: Map<string, Launch>
   leases: Map<string, Lease>
   memory: Map<string, MemoryFragment>
   approvals: Map<string, Approval>

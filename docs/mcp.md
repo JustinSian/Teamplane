@@ -44,7 +44,7 @@ Results are JSON text content plus `structuredContent`. A denied action is a too
 
 ```
 → {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2026-07-28"}}
-← {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2026-07-28","capabilities":{"tools":{}},"serverInfo":{"name":"teamplane","version":"0.2.0"}}}
+← {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2026-07-28","capabilities":{"tools":{}},"serverInfo":{"name":"teamplane","version":"0.2.1"}}}
 
 → {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"tp_lease_acquire","arguments":{"key":"file:src/auth.ts","task":"tsk_123"}}}
 ← {"jsonrpc":"2.0","id":2,"result":{"content":[{"type":"text","text":"{\"id\":\"les_...\"}"}],"isError":false}}

@@ -160,7 +160,7 @@ A shared control plane is the same row with `transport: streamable-http` and `ur
 
 ```yaml
 - name: Verify the Teamplane event log
-  uses: JustinSian/Teamplane@v0.2.0
+  uses: JustinSian/Teamplane@v0.2.1
   with:
     control-plane-url: ${{ vars.TEAMPLANE_URL }}
     token: ${{ secrets.TEAMPLANE_TOKEN }}
@@ -189,6 +189,7 @@ teamplane user add --name bob --role maintainer
 teamplane task create --title "refactor auth" --repo .
 teamplane mandate issue --subject <bob-id> --task <task-id> --paths src/auth.ts --ttl 1h
 teamplane task start <task-id> --id <mandate-id>
+teamplane task launch <task-id> -- dsh     # or: -- node worker.mjs
 teamplane lease acquire --key file:src/auth.ts --task <task-id> --ttl 15m
 teamplane submit <task-id> --verify "npm test" --merge
 teamplane audit verify
@@ -216,7 +217,7 @@ Related work that shaped this: Collaborative Memory (ICML'25), MERGEGYM, ScopeGa
 
 ## Status
 
-`0.2.0` — **research preview**, single node, pre-1.0. The event log is O(n) on startup; snapshots mitigate, rotation is on the roadmap. Interfaces may change before `1.0`.
+`0.2.1` — **research preview**, single node, pre-1.0. The event log is O(n) on startup; snapshots mitigate, rotation is on the roadmap. Interfaces may change before `1.0`.
 
 If you build on it, pin a commit and read [SECURITY.md](SECURITY.md) and [STATUS.md](STATUS.md).
 

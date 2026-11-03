@@ -5,6 +5,7 @@ import type {
   Approval,
   EventRecord,
   EventType,
+  Launch,
   Lease,
   MandateRecord,
   MemoryFragment,
@@ -28,6 +29,7 @@ export function emptyState(): State {
     policy: defaultPolicy(),
     mandates: new Map(),
     tasks: new Map(),
+    launches: new Map(),
     leases: new Map(),
     memory: new Map(),
     approvals: new Map(),
@@ -238,6 +240,11 @@ export function applyEvent(state: State, event: EventRecord): void {
       }
       break
     }
+    case 'task.launched': {
+      const launch = data as Launch
+      state.launches.set(launch.id, launch)
+      break
+    }
     case 'lease.acquired': {
       const lease = data as Lease
       state.leases.set(lease.id, lease)
@@ -314,6 +321,7 @@ interface SerializedState {
   policy: Policy
   mandates: MandateRecord[]
   tasks: Task[]
+  launches: Launch[]
   leases: Lease[]
   memory: MemoryFragment[]
   approvals: Approval[]
@@ -327,6 +335,7 @@ function serializeState(state: State): SerializedState {
     policy: state.policy,
     mandates: [...state.mandates.values()],
     tasks: [...state.tasks.values()],
+    launches: [...state.launches.values()],
     leases: [...state.leases.values()],
     memory: [...state.memory.values()],
     approvals: [...state.approvals.values()],
@@ -341,6 +350,7 @@ function deserializeState(state: SerializedState): State {
     policy: state.policy,
     mandates: new Map(state.mandates.map((item) => [item.id, item])),
     tasks: new Map(state.tasks.map((item) => [item.id, item])),
+    launches: new Map(state.launches.map((item) => [item.id, item])),
     leases: new Map(state.leases.map((item) => [item.id, item])),
     memory: new Map(state.memory.map((item) => [item.id, item])),
     approvals: new Map(state.approvals.map((item) => [item.id, item])),

@@ -1,6 +1,6 @@
 # Status
 
-**Version:** 0.2.0 · **Date:** 2026-11-03 · **Maturity:** research preview
+**Version:** 0.2.1 · **Date:** 2026-11-03 · **Maturity:** research preview
 
 Teamplane is a working reference implementation of a multi-principal control plane for agent teams. It is not a finished product. This page is the honest matrix: what is shipped, what is partial, what is not built, and what has actually been measured.
 
@@ -23,7 +23,7 @@ Teamplane is a working reference implementation of a multi-principal control pla
 | DSH host guard | **Experimental** | source + fake-`ctx` unit tests; **not exercised inside a live DSH profile** |
 | GitHub Action | **Shipped** | audit verification composite action |
 | Playground | **Shipped** | one command seeds a team and serves the console |
-| Dispatcher (launch DSH sessions) | **Not built** | `task start` creates a worktree and context; the human/agent launches the runtime |
+| Dispatch | **Partial** | `task launch <id> -- dsh` spawns a runtime in the worktree and records a launch event; no session streaming or automatic assignment |
 | GitHub App / PR integration | **Not built** | local or shared bare repositories only |
 | Multi-node / HA | **Not built** | single process, single writer |
 | Memory review workflow | **Not built** | anyone with `memory.write` can publish; conflicts are events, not approvals |

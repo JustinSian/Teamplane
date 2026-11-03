@@ -80,6 +80,27 @@ test('HTTP surface: auth, policy, leases, memory, audit and MCP', async (t) => {
   assert.equal(audit.status, 200)
   assert.equal(audit.body.ok, true)
 
+  // SSE resumes from `since` (or Last-Event-ID) and frames carry the event id.
+  const controller = new AbortController()
+  try {
+    const stream = await fetch(`${running.url}/v1/stream?token=${init.token}&since=1&types=principal.created`, {
+      signal: controller.signal,
+    })
+    const reader = stream.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    const deadline = Date.now() + 3000
+    while (!buffer.includes('principal.created') && Date.now() < deadline) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+    }
+    assert.match(buffer, /id: 2/)
+    assert.match(buffer, /principal\.created/)
+  } finally {
+    controller.abort()
+  }
+
   const mcp = await call('/mcp', {
     method: 'POST',
     body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),

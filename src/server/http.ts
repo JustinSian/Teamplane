@@ -43,7 +43,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
   const onEvent = (event: { type: string }) => {
     for (const client of clients) {
       if (client.types.length > 0 && !client.types.some((type) => event.type === type || event.type.startsWith(type.replace(/\*$/, '')))) continue
-      writeSse(client.res, 'event', event)
+      writeSse(client.res, 'event', event, (event as { seq?: number }).seq)
     }
   }
   workspace.log.on('event', onEvent)
@@ -82,8 +82,16 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
         'X-Accel-Buffering': 'no',
       })
       const client = { res, types }
+      const headerId = Number(req.headers['last-event-id'] ?? '')
+      const querySince = Number(url.searchParams.get('since') ?? '')
+      const since = Number.isFinite(headerId) && headerId > 0 ? headerId : Number.isFinite(querySince) && querySince > 0 ? querySince : 0
+      writeSse(res, 'hello', { at: nowIso(), types, since })
+      if (since > 0) {
+        for (const event of workspace.service.eventsSince(since, types)) {
+          writeSse(res, 'event', event, event.seq)
+        }
+      }
       clients.add(client)
-      writeSse(res, 'hello', { at: nowIso(), types })
       const keepAlive = setInterval(() => writeSse(res, 'ping', { at: nowIso() }), 15000)
       keepAlive.unref()
       req.on('close', () => {
@@ -235,6 +243,15 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
       sendJson(res, 200, task)
       return
     }
+    const launchMatch = /^\/v1\/tasks\/([^/]+)\/launched$/.exec(path)
+    if (method === 'POST' && launchMatch) {
+      const launch = service.recordLaunch(ctx.actor, launchMatch[1]!, {
+        command: String(body.command ?? ''),
+        pid: asNumber(body.pid) ?? null,
+      })
+      sendJson(res, 201, launch)
+      return
+    }
     const submitMatch = /^\/v1\/tasks\/([^/]+)\/submit$/.exec(path)
     if (method === 'POST' && submitMatch) {
       const result = service.submit(
@@ -359,6 +376,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
         policyVersion: service.state.policy.version,
         principals: service.state.principals.size,
         tasks: [...service.state.tasks.values()],
+        launches: [...service.state.launches.values()].slice(-20),
         leases: [...service.state.leases.values()].filter((lease) => lease.endedAt === null),
         approvals: [...service.state.approvals.values()].filter((approval) => approval.status === 'pending'),
         events: service.state.lastSeq,
@@ -460,8 +478,9 @@ function sendError(res: ServerResponse, error: unknown): void {
   sendJson(res, 500, { error: { code: 'internal_error', message, details: null } })
 }
 
-function writeSse(res: ServerResponse, event: string, data: unknown): void {
-  res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+function writeSse(res: ServerResponse, event: string, data: unknown, id?: number): void {
+  const prefix = id === undefined ? '' : `id: ${id}\n`
+  res.write(`${prefix}event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
 }
 
 function serveStatic(path: string, res: ServerResponse): void {

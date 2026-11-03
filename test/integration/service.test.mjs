@@ -42,6 +42,14 @@ test('multi-principal lifecycle: mandates, leases, memory, approvals and submit'
   assert.equal(started.status, 'active')
   assert.ok(started.worktree)
 
+  const launch = service.recordLaunch(alice, task.id, { command: 'dsh', pid: 4242 })
+  assert.equal(launch.task, task.id)
+  assert.equal(service.launchesFor(task.id).length, 1)
+  assert.throws(
+    () => service.recordLaunch(carolActor, task.id, { command: 'dsh' }),
+    (error) => error instanceof TeamplaneError && error.status === 403,
+  )
+
   const lease = service.acquireLease(bobActor, {
     key: 'file:src/auth.ts',
     task: task.id,

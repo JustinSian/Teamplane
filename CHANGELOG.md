@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.1 — 2026-11-03
+
+### Added
+
+- **Dispatch**: `teamplane task launch <task-id> -- dsh` starts a runtime inside the task worktree with `TEAMPLANE_URL`, `TEAMPLANE_TASK` and the mandate from `.teamplane/context.json`; records a `task.launched` event with the command and pid. `--detach` for background workers. `TEAMPLANE_URL` now works without a local workspace, so the CLI can drive a remote control plane.
+- **SSE resume**: event frames carry `id: <seq>`; reconnecting clients send `Last-Event-ID` (or `?since=`) and the server replays the gap before resuming live delivery.
+- `POST /v1/tasks/:id/launched` and launch records in `/v1/state`.
+
+### Changed
+
+- Version 0.2.1; tests remain 24/24.
+
 ## 0.2.0 — 2026-11-03
 
 The product surface release. Everything in 0.1.0 still holds; this adds the path from "clone" to "a team I can act on".
@@ -8,6 +20,8 @@ The product surface release. Everything in 0.1.0 still holds; this adds the path
 
 - **`teamplane playground`**: seeds a realistic team (4 tasks, 3 principals, 2 live leases, 3 memory fragments, 1 pending approval, a real denial) and serves the console on one command. `--open` launches the browser, `--keep` preserves the temp workspace.
 - **Console write actions**: approve/reject pending approvals, create tasks, token-in-URL onboarding, snapshot mode for screenshots.
+- **Dispatch**: `teamplane task launch <id> -- dsh` starts a runtime in the task worktree with `TEAMPLANE_URL`/`TEAMPLANE_MANDATE`, records a `task.launched` event and the pid; `--detach` for background runs.
+- **SSE resume**: the stream sends `id: <seq>` and replays from `Last-Event-ID` or `?since=`.
 - **GitHub Action** (`action.yml`): fail-closed audit-chain verification for CI.
 - **Landing page** (`site/`) and **Pages workflow**; social preview and real console screenshots.
 - **Release workflow**: tests, demo, MCP smoke, npm pack, git bundle, GitHub Release on tags.

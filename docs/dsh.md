@@ -38,6 +38,14 @@ Or the shared control plane over HTTP:
 
 Tools appear as `mcp__teamplane__tp_lease_acquire` and so on.
 
+Launch the agent in its task worktree so the guard and the context travel with it:
+
+```bash
+TEAMPLANE_URL=http://127.0.0.1:7317 TEAMPLANE_TOKEN=... \n  teamplane task launch <task-id> -- dsh
+```
+
+The child process receives `TEAMPLANE_URL`, `TEAMPLANE_TASK` and the mandate from `.teamplane/context.json`; the launch is recorded as a `task.launched` event.
+
 **Guarantee:** every *API* action is authorised. If the model never calls the tool, the API cannot stop a raw file write; the merge gate catches it at submit.
 
 ## Level 2 — host guard (experimental, stronger)

@@ -5,6 +5,7 @@ import type {
   Approval,
   AuthenticatedPrincipal,
   AuthorizeResult,
+  Launch,
   Lease,
   LeaseMode,
   MandateClaims,
@@ -351,6 +352,28 @@ export class TeamplaneService {
       mandateId: record?.id ?? null,
     })
     return this.state.tasks.get(taskId) ?? task
+  }
+
+  recordLaunch(actor: AuthenticatedPrincipal, taskId: string, input: { command: string; pid?: number | null }): Launch {
+    const task = this.state.tasks.get(taskId)
+    if (!task) fail('task_not_found', `No task ${taskId}`, 404)
+    this.authorizeOrThrow(actor, 'task.launch', `task:${taskId}`)
+    if (!task.worktree) fail('task_not_started', `Task ${taskId} has no worktree; run "task start" first.`, 409)
+    if (!input.command || input.command.trim() === '') fail('invalid_command', 'command is required', 422)
+    const launch: Launch = {
+      id: id('lnc'),
+      task: taskId,
+      command: input.command.slice(0, 500),
+      pid: input.pid ?? null,
+      actor: actor.principal.id,
+      startedAt: this.now(),
+    }
+    this.log.append('task.launched', actor.principal.id, launch as unknown as JsonValue)
+    return launch
+  }
+
+  launchesFor(taskId: string): Launch[] {
+    return [...this.state.launches.values()].filter((launch) => launch.task === taskId)
   }
 
   // ------------------------------------------------------------------- lease

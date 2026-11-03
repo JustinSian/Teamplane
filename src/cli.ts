@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from 'node:child_process'
-import { rmSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseArgs } from 'node:util'
 import type { Policy, Role } from './core/types.js'
@@ -55,6 +55,7 @@ const OPTIONS = {
   ci: { type: 'boolean' },
   keep: { type: 'boolean' },
   open: { type: 'boolean' },
+  detach: { type: 'boolean' },
 } as const
 
 interface Parsed {
@@ -120,7 +121,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       case 'doctor':
         return cmdDoctor(parsed)
       case 'version':
-        process.stdout.write('teamplane 0.2.0\n')
+        process.stdout.write('teamplane 0.2.1\n')
         return 0
       default:
         process.stderr.write(`Unknown command: ${command}\n\n${usage()}`)
@@ -143,7 +144,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 }
 
 function usage(): string {
-  return `teamplane 0.2.0 — a deterministic control plane for multi-user agent teams
+  return `teamplane 0.2.1 — a deterministic control plane for multi-user agent teams
 
 Usage: teamplane <command> [options]
 
@@ -161,6 +162,7 @@ Usage: teamplane <command> [options]
   mandate list
   task create --title <t> [--repo <path>] [--base main]
   task start  <taskId> [--id <mandateId>]
+  task launch <taskId> [--detach] [-- <command...>]
   task list | task show <taskId>
   lease acquire --key file:src/x.ts --task <id> [--mode exclusive] [--ttl 15m]
   lease renew <leaseId> [--ttl 15m] | lease release <leaseId> | lease list
@@ -462,6 +464,59 @@ async function cmdTask(parsed: Parsed, sub: string | undefined): Promise<number>
     }
     return 0
   }
+  if (sub === 'launch') {
+    const taskId = value(parsed, 'task') ?? parsed.positionals[2] ?? ''
+    const { tasks } = await client.tasks()
+    const task = tasks.find((item) => item.id === taskId)
+    if (!task) {
+      process.stderr.write(`error: task ${taskId} not found\n`)
+      return 1
+    }
+    if (!task.worktree) {
+      process.stderr.write(`error: task ${taskId} has no worktree; run "teamplane task start ${taskId} --id <mandate>" first\n`)
+      return 1
+    }
+    const worktree = String(task.worktree)
+    const command = parsed.positionals.slice(3)
+    const cmd = command[0] ?? 'dsh'
+    const args = command.slice(1)
+    const contextPath = join(worktree, '.teamplane', 'context.json')
+    let mandate = process.env.TEAMPLANE_MANDATE
+    if (!mandate && existsSync(contextPath)) {
+      try {
+        const context = JSON.parse(readFileSync(contextPath, 'utf8')) as { mandate?: string }
+        mandate = context.mandate
+      } catch {
+        /* a missing context is reported by the guard, not here */
+      }
+    }
+    const env: NodeJS.ProcessEnv = { ...process.env, TEAMPLANE_URL: client.baseUrl, TEAMPLANE_TASK: taskId }
+    if (mandate) env.TEAMPLANE_MANDATE = mandate
+    const detach = flag(parsed, 'detach')
+    const child = spawn(cmd, args, { cwd: worktree, env, stdio: detach ? 'ignore' : 'inherit', detached: detach })
+    const exited = detach
+      ? null
+      : new Promise<number>((resolve, reject) => {
+          child.once('error', reject)
+          child.once('exit', (code) => resolve(code ?? 1))
+        })
+    if (detach) {
+      child.once('error', (error) => process.stderr.write(`launch error: ${error.message}\n`))
+      child.unref()
+      const launch = (await client.post(`/v1/tasks/${encodeURIComponent(taskId)}/launched`, {
+        command: [cmd, ...args].join(' '),
+        pid: child.pid ?? null,
+      })) as { id: string }
+      process.stdout.write(`Launched ${cmd} in ${worktree} (pid ${child.pid ?? '?'}, launch ${launch.id})\n`)
+      return 0
+    }
+    const launch = (await client.post(`/v1/tasks/${encodeURIComponent(taskId)}/launched`, {
+      command: [cmd, ...args].join(' '),
+      pid: child.pid ?? null,
+    })) as { id: string }
+    process.stdout.write(`Launched ${cmd} in ${worktree} (launch ${launch.id})\n`)
+    return exited ? await exited : 0
+  }
   if (sub === 'list' || sub === undefined) {
     const { tasks } = await client.tasks()
     print(
@@ -698,11 +753,14 @@ function cmdDoctor(parsed: Parsed): number {
 }
 
 function makeClient(): ApiClient {
+  const token = requireToken(process.env.TEAMPLANE_TOKEN)
+  if (process.env.TEAMPLANE_URL) {
+    return new ApiClient({ baseUrl: process.env.TEAMPLANE_URL, token, mandate: process.env.TEAMPLANE_MANDATE })
+  }
   const root = findRoot()
   const config = readConfig(root)
   const join = readJoinConfig(root)
-  const baseUrl = process.env.TEAMPLANE_URL ?? join?.server ?? `http://${config.host}:${config.port}`
-  const token = requireToken(process.env.TEAMPLANE_TOKEN)
+  const baseUrl = join?.server ?? `http://${config.host}:${config.port}`
   return new ApiClient({ baseUrl, token, mandate: process.env.TEAMPLANE_MANDATE })
 }
 

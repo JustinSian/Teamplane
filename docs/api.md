@@ -48,6 +48,7 @@ Principal tokens are printed once by `init` / `user add`, stored only as SHA-256
 | POST | `/v1/tasks` | create a task |
 | GET | `/v1/tasks` | list tasks |
 | POST | `/v1/tasks/:id/start` | create worktree + context |
+| POST | `/v1/tasks/:id/launched` | record a launched runtime (command, pid) |
 | POST | `/v1/tasks/:id/submit` | leases + merge-tree + verify + merge |
 | POST | `/v1/leases` | acquire |
 | GET | `/v1/leases` | list |
@@ -160,6 +161,8 @@ data: {"at":"...","types":["lease.","approval.","submit."]}
 event: event
 data: {"seq":42,"type":"lease.denied",...}
 ```
+
+Each `event` frame carries `id: <seq>`; a reconnecting client sends `Last-Event-ID` and the server replays the events after it. A custom client can pass `?since=<seq>` instead.
 
 `EventSource` cannot set an `Authorization` header, so the stream accepts `?token=`. Use it only over loopback or TLS; the token can appear in proxy logs. Other clients should send the header instead.
 

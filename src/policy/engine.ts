@@ -62,7 +62,7 @@ export function defaultPolicy(): Policy {
         description: 'Maintainers may create tasks and issue mandates for them.',
         effect: 'allow',
         principals: ['role:maintainer'],
-        actions: ['task.create', 'task.start', 'mandate.issue'],
+        actions: ['task.create', 'task.start', 'task.launch', 'mandate.issue'],
         resources: ['*'],
       },
       {
