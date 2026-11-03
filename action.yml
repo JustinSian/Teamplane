@@ -1,0 +1,41 @@
+name: Teamplane Audit Verify
+description: Fail the job when a Teamplane control plane's hash-chained event log does not verify.
+author: Teamplane contributors
+branding:
+  icon: shield
+  color: green
+
+inputs:
+  control-plane-url:
+    description: Base URL of the Teamplane control plane, e.g. http://127.0.0.1:7317
+    required: true
+  token:
+    description: Principal token with access to GET /v1/audit/verify
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Verify the event log
+      shell: bash
+      env:
+        TP_URL: ${{ inputs.control-plane-url }}
+        TP_TOKEN: ${{ inputs.token }}
+      run: |
+        set -euo pipefail
+        body="$(mktemp)"
+        status="$(curl -sS -o "$body" -w '%{http_code}' -H "authorization: Bearer $TP_TOKEN" "$TP_URL/v1/audit/verify")"
+        if [ "$status" != "200" ]; then
+          echo "Teamplane audit endpoint returned HTTP $status"
+          cat "$body"
+          exit 1
+        fi
+        node -e '
+          const fs = require("node:fs");
+          const result = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+          console.log(`events=${result.events} ok=${result.ok} brokenAt=${result.brokenAt ?? "null"}`);
+          if (!result.ok) {
+            console.error(`audit chain broken at seq ${result.brokenAt}: ${result.reason}`);
+            process.exit(1);
+          }
+        ' "$body"

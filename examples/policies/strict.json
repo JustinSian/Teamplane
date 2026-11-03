@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "default": "deny",
+  "rules": [
+    {
+      "id": "owner-all",
+      "description": "Owners may do anything.",
+      "effect": "allow",
+      "principals": ["role:owner"],
+      "actions": ["*"],
+      "resources": ["*"]
+    },
+    {
+      "id": "agent-read",
+      "description": "Agents read inside a mandate.",
+      "effect": "allow",
+      "principals": ["role:agent", "role:maintainer"],
+      "actions": ["fs.read", "memory.read"],
+      "resources": ["*"],
+      "obligations": { "requireMandate": true }
+    },
+    {
+      "id": "agent-write",
+      "description": "Agents write only inside a mandate and a lease.",
+      "effect": "allow",
+      "principals": ["role:agent", "role:maintainer"],
+      "actions": ["fs.write"],
+      "resources": ["*"],
+      "obligations": { "requireMandate": true, "requireLease": true }
+    },
+    {
+      "id": "agent-coordinate",
+      "description": "Leases, memory and submit are mandate-scoped.",
+      "effect": "allow",
+      "principals": ["role:agent", "role:maintainer"],
+      "actions": ["lease.acquire", "memory.write", "task.submit"],
+      "resources": ["*"],
+      "obligations": { "requireMandate": true }
+    },
+    {
+      "id": "maintainer-issue",
+      "description": "Maintainers create tasks and issue mandates.",
+      "effect": "allow",
+      "principals": ["role:maintainer"],
+      "actions": ["task.create", "task.start", "mandate.issue"],
+      "resources": ["*"]
+    },
+    {
+      "id": "viewer-read",
+      "description": "Viewers read but never write.",
+      "effect": "allow",
+      "principals": ["role:viewer"],
+      "actions": ["memory.read", "fs.read"],
+      "resources": ["*"]
+    },
+    {
+      "id": "main-protected",
+      "description": "Nobody force-pushes main without an owner approval.",
+      "effect": "ask",
+      "principals": ["*"],
+      "actions": ["git.push"],
+      "resources": ["branch:main"],
+      "conditions": { "all": [{ "field": "request.force", "op": "eq", "value": true }] },
+      "obligations": { "requireApproval": true, "approvalRole": "owner", "ttlSeconds": 1800 }
+    },
+    {
+      "id": "secrets-never",
+      "description": "Even an owner cannot read the deployment secrets.",
+      "effect": "deny",
+      "principals": ["*"],
+      "actions": ["fs.read", "fs.write"],
+      "resources": ["file:secrets/**"]
+    },
+    {
+      "id": "policy-owner",
+      "description": "Only owners change policy, roles or revoke mandates.",
+      "effect": "allow",
+      "principals": ["role:owner"],
+      "actions": ["policy.write", "role.grant", "mandate.revoke"],
+      "resources": ["policy"]
+    }
+  ]
+}
