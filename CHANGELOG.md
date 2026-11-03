@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.2 — 2026-11-03
+
+### Fixed
+
+- `limits.maxWrites` is now enforced. Each successful `fs.write` authorisation appends `write.authorized` and increments a per-mandate counter that is replayed on restart; the next call returns `deny` with a write-limit reason. The limit counts authorisations, not raw filesystem writes.
+- `maxWrites` must be a non-negative integer at issuance.
+
 ## 0.4.1 — 2026-11-03
 
 ### Fixed

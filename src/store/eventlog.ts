@@ -34,6 +34,7 @@ export function emptyState(): State {
     memory: new Map(),
     approvals: new Map(),
     fencing: new Map(),
+    mandateWrites: new Map(),
     lastSeq: 0,
     lastHash: GENESIS,
   }
@@ -234,6 +235,11 @@ export function applyEvent(state: State, event: EventRecord): void {
       if (!state.roles.has(principal.id)) state.roles.set(principal.id, [])
       break
     }
+    case 'write.authorized': {
+      const payload = data as { mandateId: string }
+      state.mandateWrites.set(payload.mandateId, (state.mandateWrites.get(payload.mandateId) ?? 0) + 1)
+      break
+    }
     case 'principal.disabled': {
       const payload = data as { principalId: string; at: string }
       const principal = state.principals.get(payload.principalId)
@@ -388,6 +394,7 @@ interface SerializedState {
   memory: MemoryFragment[]
   approvals: Approval[]
   fencing: Array<[string, number]>
+  mandateWrites?: Array<[string, number]>
 }
 
 function serializeState(state: State): SerializedState {
@@ -402,6 +409,7 @@ function serializeState(state: State): SerializedState {
     memory: [...state.memory.values()],
     approvals: [...state.approvals.values()],
     fencing: [...state.fencing.entries()],
+    mandateWrites: [...state.mandateWrites.entries()],
   }
 }
 
@@ -417,6 +425,7 @@ function deserializeState(state: SerializedState): State {
     memory: new Map(state.memory.map((item) => [item.id, item])),
     approvals: new Map(state.approvals.map((item) => [item.id, item])),
     fencing: new Map(state.fencing),
+    mandateWrites: new Map(state.mandateWrites ?? []),
     lastSeq: 0,
     lastHash: GENESIS,
   }

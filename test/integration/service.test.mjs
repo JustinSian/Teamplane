@@ -75,6 +75,20 @@ test('multi-principal lifecycle: mandates, leases, memory, approvals and submit'
   assert.equal(carolDecision.decision, 'deny')
   assert.match(carolDecision.reason, /outside the mandate/)
 
+  const limitedMandate = service.issueMandate(alice, {
+    subject: carol.principal.id,
+    task: task.id,
+    paths: ['docs'],
+    maxWrites: 1,
+    ttlSeconds: 600,
+  })
+  service.acquireLease(carolActor, { key: 'file:docs/x.md', task: task.id, mandate: limitedMandate.record.claims })
+  const firstWrite = service.authorize(carolActor, 'fs.write', 'file:docs/x.md', {}, limitedMandate.record.claims)
+  assert.equal(firstWrite.decision, 'allow')
+  const secondWrite = service.authorize(carolActor, 'fs.write', 'file:docs/x.md', {}, limitedMandate.record.claims)
+  assert.equal(secondWrite.decision, 'deny')
+  assert.match(secondWrite.reason, /write limit/)
+
   const teamMemory = service.writeMemory(aliceActor, {
     kind: 'decision',
     topic: 'rotation',

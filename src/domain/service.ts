@@ -223,6 +223,8 @@ export class TeamplaneService {
       fail('invalid_mandate_path', 'Mandate paths must name files or directories; "." and "/" are not allowed.', 422)
     }
     const ttl = Math.max(60, Math.min(input.ttlSeconds ?? 3600, 7 * 86400))
+    const maxWrites = input.maxWrites ?? 1000
+    if (!Number.isInteger(maxWrites) || maxWrites < 0) fail('invalid_max_writes', 'maxWrites must be a non-negative integer.', 422)
     const issuedAt = this.now()
     const claims: MandateClaims = {
       v: 1,
@@ -236,7 +238,7 @@ export class TeamplaneService {
         branches: unique(input.branches ?? [task.branch, task.baseBranch]),
         memory: unique(input.memory ?? ['team']),
       },
-      limits: { maxWrites: input.maxWrites ?? 1000, expiresAt: addSeconds(issuedAt, ttl) },
+      limits: { maxWrites, expiresAt: addSeconds(issuedAt, ttl) },
       policyVersion: this.state.policy.version,
       iat: issuedAt,
       exp: addSeconds(issuedAt, ttl),
@@ -735,6 +737,7 @@ export class TeamplaneService {
     mandate?: MandateClaims,
     approvalId?: string,
     consumeApproval = false,
+    recordUsage = true,
   ): AuthorizeResult {
     const decision = decide(this.state.policy, { actor, action, resource, fields })
     const obligations: Obligations = decision.obligations
@@ -761,6 +764,10 @@ export class TeamplaneService {
           return { ...result, decision: 'deny', reason: `No active lease covers ${resource} for mandate ${mandate.id}.`, mandateOk: true }
         }
       }
+      if (action === 'fs.write') {
+        const limit = this.writeLimitReason(mandate)
+        if (limit) return { ...result, decision: 'deny', reason: limit, mandateOk: true }
+      }
       if (obligations.requireApproval) {
         const approval = this.approvalValid(approvalId, action, resource, mandate?.id ?? null)
         if (!approval) {
@@ -781,9 +788,17 @@ export class TeamplaneService {
           const check = mandateAllows(mandate, action, resource)
           if (!check.ok) return { ...result, decision: 'deny', reason: check.reason, mandateOk: false }
         }
+        if (action === 'fs.write') {
+          const limit = this.writeLimitReason(mandate)
+          if (limit) return { ...result, decision: 'deny', reason: limit, mandateOk: true }
+        }
         const approver = this.useApproval(actor, approval, action, resource, mandate?.id ?? null, consumeApproval)
         result = { ...result, decision: 'allow', reason: `Approved by ${approver}.` }
       }
+    }
+
+    if (result.decision === 'allow' && action === 'fs.write' && mandate && recordUsage) {
+      this.log.append('write.authorized', actor.principal.id, { mandateId: mandate.id, resource, at: this.now() })
     }
 
     if (result.decision === 'deny' && !action.endsWith('.read')) {
@@ -807,7 +822,7 @@ export class TeamplaneService {
     mandate?: MandateClaims,
     approvalId?: string,
   ): AuthorizeResult {
-    const result = this.authorize(actor, action, resource, fields, mandate, approvalId, true)
+    const result = this.authorize(actor, action, resource, fields, mandate, approvalId, true, true)
     if (result.decision !== 'allow') {
       fail(result.decision === 'ask' ? 'approval_required' : 'forbidden', result.reason, result.decision === 'ask' ? 428 : 403, {
         ruleId: result.ruleId,
@@ -816,6 +831,15 @@ export class TeamplaneService {
       })
     }
     return result
+  }
+
+  private writeLimitReason(mandate?: MandateClaims): string | null {
+    if (!mandate) return null
+    const used = this.state.mandateWrites.get(mandate.id) ?? 0
+    if (used >= mandate.limits.maxWrites) {
+      return `Mandate ${mandate.id} has reached its write limit (${mandate.limits.maxWrites}).`
+    }
+    return null
   }
 
   private hasLeaseFor(mandate: MandateClaims, resource: string): boolean {

@@ -28,7 +28,7 @@ Teamplane is a coordination layer, not a sandbox. It assumes:
 What Teamplane enforces:
 
 - Every API action is checked against policy **and** the caller's mandate. Unknown resource kinds fail closed; `task:` actions are bound to the mandate's task.
-- Writes must hold a lease; leases conflict by typed containment, not guesswork.
+- Writes must hold a lease; leases conflict by typed containment, not guesswork. Successful `fs.write` authorisations count against `maxWrites`.
 - Mandates attenuate; approvals derive `requiredRole` from the matching policy rule (a request body cannot choose it), are single-use, action-hash-bound and consumed atomically.
 - Verification commands are bound to a task at creation (or changed by an authorised principal); `submit` rejects commands supplied in the request body.
 - Memory reads are ACL-projected; `memory.written` events and SSE frames redact content for principals that cannot read the fragment.

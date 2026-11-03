@@ -190,6 +190,7 @@ export interface Approval {
 export type EventType =
   | 'principal.created'
   | 'principal.disabled'
+  | 'write.authorized'
   | 'role.granted'
   | 'policy.updated'
   | 'mandate.issued'
@@ -236,6 +237,7 @@ export interface State {
   memory: Map<string, MemoryFragment>
   approvals: Map<string, Approval>
   fencing: Map<string, number>
+  mandateWrites: Map<string, number>
   lastSeq: number
   lastHash: string
 }

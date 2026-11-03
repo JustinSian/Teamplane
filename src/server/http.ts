@@ -187,6 +187,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
         ctx.mandate,
         body.approvalId as string | undefined,
         false,
+        false,
       )
       sendJson(res, 200, result)
       return

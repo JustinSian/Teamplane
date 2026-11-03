@@ -1,6 +1,6 @@
 # Status
 
-**Version:** 0.4.1 · **Date:** 2026-11-03 · **Maturity:** research preview
+**Version:** 0.4.2 · **Date:** 2026-11-03 · **Maturity:** research preview
 
 Teamplane is a working reference implementation of a multi-principal control plane for agent teams. It is not a finished product. This page is the honest matrix: what is shipped, what is partial, what is not built, and what has actually been measured.
 
@@ -32,7 +32,7 @@ Teamplane is a working reference implementation of a multi-principal control pla
 | Rate limiting | **Shipped** | per-principal **and per-IP** token bucket, 120 burst / 2 per second by default, `Retry-After` |
 | TLS | **Not built** | bind to loopback or terminate TLS in front |
 | SSO / identity federation | **Not built** | external identities are provenance strings |
-| `maxWrites` | **Advisory** | recorded in the mandate but not enforced; do not rely on it |
+| `maxWrites` | **Enforced (authorisation)** | counts successful `fs.write` authorisations per mandate; raw writes outside the control plane are not observed |
 | Key isolation | **Shipped (default)** | signing keys live in `~/.teamplane/keys/<workspace-id>/`, not the repo; host/container isolation is still the operator's job |
 | Memory at rest | **Partial** | text lives in `.teamplane/memory/<id>.json` (0600), not in the event log; host filesystem access still reads it |
 | Repository roots | **Shipped** | `task.create` rejects paths outside the workspace or `TEAMPLANE_REPO_ROOTS` |

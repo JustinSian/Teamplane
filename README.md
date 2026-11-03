@@ -91,7 +91,7 @@ header.payload.signature          # Ed25519, JWT-like but not JWT
 claims = {
   id, issuer, subject, task,
   scope: { paths, actions, branches, memory },
-  limits: { maxWrites, expiresAt },
+  limits: { maxWrites, expiresAt },   // counted on each authorised fs.write
   policyVersion, iat, exp, nonce
 }
 ```
@@ -164,7 +164,7 @@ A shared control plane is the same row with `transport: streamable-http` and `ur
 
 ```yaml
 - name: Verify the Teamplane event log
-  uses: JustinSian/Teamplane@v0.4.1
+  uses: JustinSian/Teamplane@v0.4.2
   with:
     control-plane-url: ${{ vars.TEAMPLANE_URL }}
     token: ${{ secrets.TEAMPLANE_TOKEN }}
@@ -222,7 +222,7 @@ Related work that shaped this: Collaborative Memory (ICML'25), MERGEGYM, ScopeGa
 
 ## Status
 
-`0.4.1` — **research preview**, single node, pre-1.0. The event log is segmented; startup replays the chain. Interfaces may change before `1.0`.
+`0.4.2` — **research preview**, single node, pre-1.0. The event log is segmented; startup replays the chain. Interfaces may change before `1.0`.
 
 If you build on it, pin a commit and read [SECURITY.md](SECURITY.md) and [STATUS.md](STATUS.md). The repository also runs a dependency-free secret scan in CI: `npm run scan:secrets` and `npm run scan:secrets:history`.
 
