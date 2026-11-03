@@ -13,6 +13,14 @@
     "coordination"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JustinSian/teamplane.git"
+  },
+  "homepage": "https://github.com/JustinSian/teamplane#readme",
+  "bugs": {
+    "url": "https://github.com/JustinSian/teamplane/issues"
+  },
   "type": "module",
   "bin": {
     "teamplane": "./bin/teamplane.js"

@@ -6,6 +6,8 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-b7f36b.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20.11-0b1220.svg)](package.json)
 
+![Teamplane architecture](docs/assets/architecture.svg)
+
 Your agents share a repository, not a brain.
 
 Teamplane gives every teammate and every agent a **signed mandate**, a **lease** on the files it touches, a **permissioned memory** it may read, and an **auditable merge gate**. It does not watch every conversation. It subscribes to structured events.
