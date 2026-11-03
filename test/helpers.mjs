@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { initProject, loadWorkspace } from '../dist/core/config.js'
 
 export function git(cwd, args) {
@@ -35,7 +35,7 @@ export function makeWorkspace() {
 
 export function commitFile(worktree, relative, content, message = 'change') {
   const target = join(worktree, relative)
-  mkdirSync(join(target, '..'), { recursive: true })
+  mkdirSync(dirname(target), { recursive: true })
   writeFileSync(target, content)
   git(worktree, ['config', 'user.name', 'Teamplane Test'])
   git(worktree, ['config', 'user.email', 'test@teamplane.dev'])

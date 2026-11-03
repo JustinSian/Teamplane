@@ -1,13 +1,19 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { join } from 'node:path'
 import { TeamplaneError } from '../../dist/core/util.js'
-import { commitFile, makeWorkspace } from '../helpers.mjs'
+import { commitFile, git, makeWorkspace } from '../helpers.mjs'
+
+const NL = String.fromCharCode(10)
+const rotated = ['export function rotateToken(token) {', '  return token + ":rotated"', '}'].join(NL)
+const stale = ['export function rotateToken(token) {', '  return token + ":stale"', '}'].join(NL)
 
 test('multi-principal lifecycle: mandates, leases, memory, approvals and submit', async (t) => {
   const { root, repo, init, workspace } = makeWorkspace()
   const { service, log } = workspace
   t.after(() => log.close())
 
+  const baseCommit = git(repo, ['rev-parse', 'HEAD']).trim()
   const alice = service.authenticate(init.token)
   const bob = service.createPrincipal(alice, { kind: 'agent', display: 'bob', roles: ['maintainer'] })
   const carol = service.createPrincipal(alice, { kind: 'agent', display: 'carol', roles: ['agent'] })
@@ -89,15 +95,20 @@ test('multi-principal lifecycle: mandates, leases, memory, approvals and submit'
   const replay = service.authorize(bobActor, 'git.push', 'branch:main', { request: { force: true } }, bobMandate.record.claims, approval.id)
   assert.equal(replay.decision, 'ask')
 
-  commitFile(started.worktree, 'src/auth.ts', 'export function rotateToken(token) {\n  return token + ":rotated"\n}\n')
-  const submitted = service.submit(bobActor, task.id, { verify: ['node -e "process.exit(0)"'] }, bobMandate.record.claims)
-  assert.equal(submitted.ok, true)
-  assert.deepEqual(submitted.changedFiles, ['src/auth.ts'])
+  commitFile(started.worktree, 'src/auth.ts', rotated)
 
-  commitFile(started.worktree, 'src/auth.ts', 'export function rotateToken(token) {\n  return token + ":rotated-twice"\n}\n', 'again')
   const broken = service.submit(bobActor, task.id, { verify: ['node -e "process.exit(1)"'] }, bobMandate.record.claims)
   assert.equal(broken.ok, false)
   assert.match(broken.reason, /Verification/)
+
+  const accepted = service.submit(bobActor, task.id, { verify: ['node -e "process.exit(0)"'] }, bobMandate.record.claims)
+  assert.equal(accepted.ok, true)
+  assert.equal(accepted.merged, false)
+  assert.deepEqual(accepted.changedFiles, ['src/auth.ts'])
+
+  const submitted = service.submit(bobActor, task.id, { verify: ['node -e "process.exit(0)"'], merge: true }, bobMandate.record.claims)
+  assert.equal(submitted.ok, true)
+  assert.equal(submitted.merged, true)
 
   const audit = service.audit()
   assert.equal(audit.ok, true)
@@ -106,4 +117,20 @@ test('multi-principal lifecycle: mandates, leases, memory, approvals and submit'
   assert.throws(() => service.resolveMandate(bobMandate.token, carolActor), /belongs to/)
   assert.ok(service.resolveMandate(bobMandate.token, bobActor))
   assert.ok(root)
+
+  // A stale branch that edits the same lines is rejected by merge-tree, not by opinion.
+  const staleTask = service.createTask(aliceActor, { title: 'stale auth branch', repoPath: repo, baseBranch: 'main' })
+  const staleMandate = service.issueMandate(aliceActor, {
+    subject: alice.principal.id,
+    task: staleTask.id,
+    paths: ['src/auth.ts'],
+    branches: [staleTask.branch],
+    ttlSeconds: 600,
+  })
+  const staleWorktree = join(root, '.teamplane-worktrees', staleTask.id)
+  git(repo, ['worktree', 'add', '-b', staleTask.branch, staleWorktree, baseCommit])
+  commitFile(staleWorktree, 'src/auth.ts', stale, 'stale edit')
+  const conflicted = service.submit(aliceActor, staleTask.id, { requireLease: false }, staleMandate.record.claims)
+  assert.equal(conflicted.ok, false)
+  assert.ok(conflicted.conflicts.some((path) => path.includes('src/auth.ts')), JSON.stringify(conflicted))
 })
