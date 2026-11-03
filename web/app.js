@@ -4,6 +4,7 @@ const state = {
   events: [],
   source: null,
   timer: null,
+  noStream: false,
 }
 
 async function api(path, options = {}) {
@@ -80,8 +81,17 @@ async function refresh() {
     $('stat-approvals').textContent = String(snapshot.approvals?.length ?? 0)
     $('stat-events').textContent = String(snapshot.events ?? 0)
     renderTasks(snapshot.tasks ?? [])
+    renderApprovals(snapshot.approvals ?? [])
+    if (!$('task-repo').value && snapshot.tasks?.[0]?.repoPath) $('task-repo').placeholder = snapshot.tasks[0].repoPath
     const policy = await api('/v1/policy')
     $('policy-json').textContent = JSON.stringify(policy, null, 2)
+    if (state.noStream) {
+      const feed = await api('/v1/events?since=0')
+      state.events = (feed.events ?? []).slice(-12).reverse()
+      renderFeed()
+      $('live-dot').className = 'dot on'
+      $('live-label').textContent = 'snapshot'
+    }
   } catch (error) {
     $('live-label').textContent = error.message
   }
@@ -116,7 +126,59 @@ function renderTasks(tasks) {
   }
 }
 
+function renderApprovals(approvals) {
+  const target = $('approvals')
+  target.replaceChildren()
+  if (approvals.length === 0) {
+    target.append(element('p', 'muted', 'Nothing waits for a human.'))
+    return
+  }
+  for (const approval of approvals) {
+    const item = element('div', 'item approval')
+    item.append(badge('pending', 'warn'))
+    item.append(element('span', 'title', `${approval.action} → ${approval.resource}`))
+    const note = element('span', 'note', `expires ${when(approval.expiresAt)}`)
+    item.append(note)
+    const actions = element('span', 'actions')
+    const approve = element('button', 'mini', 'Approve')
+    approve.addEventListener('click', () => resolveApproval(approval.id, true))
+    const reject = element('button', 'mini ghost', 'Reject')
+    reject.addEventListener('click', () => resolveApproval(approval.id, false))
+    actions.append(approve, reject)
+    item.append(actions)
+    target.append(item)
+  }
+}
+
+async function resolveApproval(id, approve) {
+  try {
+    await api(`/v1/approvals/${encodeURIComponent(id)}/resolve`, {
+      method: 'POST',
+      body: JSON.stringify({ approve, reason: approve ? 'approved in console' : 'rejected in console' }),
+    })
+    await refresh()
+  } catch (error) {
+    $('live-label').textContent = error.message
+  }
+}
+
+async function createTask(event) {
+  event.preventDefault()
+  const title = $('task-title').value.trim()
+  if (!title) return
+  try {
+    const body = { title, baseBranch: 'main' }
+    if ($('task-repo').value.trim()) body.repoPath = $('task-repo').value.trim()
+    await api('/v1/tasks', { method: 'POST', body: JSON.stringify(body) })
+    $('task-title').value = ''
+    await refresh()
+  } catch (error) {
+    $('live-label').textContent = error.message
+  }
+}
+
 function startStream() {
+  if (state.noStream) return
   if (state.source) state.source.close()
   const source = new EventSource(`/v1/stream?token=${encodeURIComponent(state.token)}`)
   state.source = source
@@ -224,6 +286,15 @@ function bindTabs() {
 
 function boot() {
   bindTabs()
+  const params = new URLSearchParams(location.search)
+  state.noStream = params.has('nostream')
+  const queryToken = params.get('token')
+  if (queryToken) {
+    state.token = queryToken
+    localStorage.setItem('teamplane.token', queryToken)
+    history.replaceState({}, '', location.pathname)
+  }
+  $('task-form').addEventListener('submit', createTask)
   $('connect').addEventListener('click', connect)
   $('token').addEventListener('keydown', (event) => {
     if (event.key === 'Enter') connect()
