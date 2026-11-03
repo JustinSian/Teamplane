@@ -1,0 +1,6 @@
+# dsh-teamplane-guard bundle patch.
+# The row name resolves from the profile's node_modules after
+# `dsh plugin --profile <profile> add <path-to-this-package>`.
+- insert:
+    - id: teamplane-guard
+      name: dsh-teamplane-guard
