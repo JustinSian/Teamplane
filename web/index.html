@@ -41,6 +41,16 @@
 
       <main>
         <section id="tab-overview" class="panel active">
+          <section id="next" class="next" hidden>
+            <div class="next-icon">→</div>
+            <div class="next-body">
+              <div class="next-label">Next step</div>
+              <strong id="next-title"></strong>
+              <span id="next-hint" class="muted"></span>
+              <code id="next-command" class="next-command" hidden></code>
+            </div>
+            <button id="copy-next" class="ghost" type="button" hidden>Copy</button>
+          </section>
           <div class="cards">
             <div class="card"><span class="card-label">Tasks</span><span id="stat-tasks" class="card-value">–</span></div>
             <div class="card"><span class="card-label">Active leases</span><span id="stat-leases" class="card-value">–</span></div>

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.1 — 2026-11-03
+
+### Added
+
+- A server-computed **next step** is returned by `GET /v1/state` and shown as a banner at the top of the Overview: add a teammate → create a task → issue a mandate and start → work and submit → verify the audit chain, with pending approvals taking priority. This turns an empty console into a guided one.
+- `teamplane init` now prints the console URL (`Then open: http://…`) after the token and key paths.
+- `teamplane serve --open` opens the console in the default browser (best-effort; the URL is still printed).
+
+### Changed
+
+- The console Overview renders the next-step banner with a one-click **Copy** for the suggested command.
+- Tests 35.
+
 ## 0.5.4 — 2026-11-03
 
 ### Added

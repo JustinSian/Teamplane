@@ -19,12 +19,14 @@ test('multi-principal lifecycle: mandates, leases, memory, approvals and submit'
   const carol = service.createPrincipal(alice, { kind: 'agent', display: 'carol', roles: ['agent'] })
   const bobActor = service.authenticate(bob.token)
   const carolActor = service.authenticate(carol.token)
+  assert.equal(service.nextStep().key, 'create-task')
 
   assert.throws(
     () => service.createTask(alice, { title: 'outside', repoPath: join(root, 'outside'), baseBranch: 'main' }),
     (error) => error instanceof TeamplaneError && error.status === 403,
   )
   const task = service.createTask(alice, { title: 'auth rotation', repoPath: repo, baseBranch: 'main', verify: ['node -e "process.exit(1)"'] })
+  assert.equal(service.nextStep().key, 'start-task')
   const bobMandate = service.issueMandate(alice, {
     subject: bob.principal.id,
     task: task.id,
@@ -46,6 +48,7 @@ test('multi-principal lifecycle: mandates, leases, memory, approvals and submit'
   })
 
   service.startTask(alice, task.id, bobMandate.record.id)
+  assert.equal(service.nextStep().key, 'submit')
   const started = service.state.tasks.get(task.id)
   assert.equal(started.status, 'active')
   assert.ok(started.worktree)
@@ -119,6 +122,7 @@ test('multi-principal lifecycle: mandates, leases, memory, approvals and submit'
     mandateId: bobMandate.record.id,
     fields: { request: { force: true } },
   })
+  assert.equal(service.nextStep().key, 'approve')
   service.resolveApproval(aliceActor, approval.id, true, 'ok')
   const allowed = service.authorize(bobActor, 'git.push', 'branch:main', { request: { force: true } }, bobMandate.record.claims, approval.id, true)
   assert.equal(allowed.decision, 'allow')

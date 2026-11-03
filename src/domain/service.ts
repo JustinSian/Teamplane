@@ -46,6 +46,13 @@ import type { EventLog } from '../store/eventlog.js'
 import { activeLeases } from '../store/eventlog.js'
 import { MemoryVault } from '../store/memory.js'
 
+export interface NextStep {
+  key: string
+  title: string
+  hint: string
+  command?: string
+}
+
 export interface ServiceOptions {
   repoPath?: string
   publicUrl?: string
@@ -434,6 +441,62 @@ export class TeamplaneService {
 
   launchesFor(taskId: string): Launch[] {
     return [...this.state.launches.values()].filter((launch) => launch.task === taskId)
+  }
+
+  nextStep(): NextStep {
+    const pending = [...this.state.approvals.values()].filter((approval) => approval.status === 'pending')
+    const tasks = [...this.state.tasks.values()]
+    if (pending.length > 0) {
+      const first = pending[0]
+      if (first) {
+        return {
+          key: 'approve',
+          title: 'A request is waiting for you',
+          hint: `Approve or reject ${first.action} on ${first.resource}.`,
+        }
+      }
+    }
+    if (this.state.principals.size <= 1) {
+      return {
+        key: 'add-teammate',
+        title: 'Add a teammate',
+        hint: 'Agents need their own principal and token; you can disable it later.',
+        command: 'teamplane user add --name bob --role maintainer',
+      }
+    }
+    if (tasks.length === 0) {
+      return {
+        key: 'create-task',
+        title: 'Create your first task',
+        hint: 'A task is a branch plus a scope of work. Verification commands are bound here.',
+        command: 'teamplane task create --title "first task" --repo . --verify "npm test"',
+      }
+    }
+    const openTask = tasks.find((task) => !task.worktree)
+    if (openTask) {
+      return {
+        key: 'start-task',
+        title: `Start "${openTask.title}"`,
+        hint: 'Issue a task-scoped mandate for a teammate, then create the worktree.',
+        command: `teamplane mandate issue --subject TEAMMATE_ID --task ${openTask.id} --paths src --ttl 1h
+  && teamplane task start ${openTask.id} --id MANDATE_ID`,
+      }
+    }
+    const activeTask = tasks.find((task) => task.status === 'active')
+    if (activeTask) {
+      return {
+        key: 'submit',
+        title: `Work in "${activeTask.title}", then submit`,
+        hint: `The agent edits ${activeTask.worktree ?? 'the worktree'}; the merge gate checks leases and verification.`,
+        command: `teamplane submit ${activeTask.id} --merge`,
+      }
+    }
+    return {
+      key: 'audit',
+      title: 'Verify the audit chain',
+      hint: 'Confirm the event log has not been tampered with.',
+      command: 'teamplane audit verify',
+    }
   }
 
   // ------------------------------------------------------------------- lease

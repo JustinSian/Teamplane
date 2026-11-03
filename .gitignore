@@ -22,3 +22,5 @@ credentials.json
 
 # local verification artifacts
 tmp-check/
+
+tmp-*/

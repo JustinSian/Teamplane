@@ -109,6 +109,39 @@ main { padding-top: 22px; }
 }
 .card-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
 .card-value { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; }
+.next {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(183, 243, 107, 0.08), transparent 60%), var(--panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.next-icon {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1.3;
+}
+.next-body { flex: 1; min-width: 0; }
+.next-label { color: var(--accent); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+.next strong { display: block; margin: 2px 0; }
+.next-code, .next .muted { display: block; }
+.next-command {
+  display: block;
+  background: #0a121e;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-top: 8px;
+  overflow: auto;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+.next button { flex-shrink: 0; }
 .onboarding {
   background: linear-gradient(135deg, rgba(183, 243, 107, 0.06), transparent 55%), var(--panel);
   border: 1px solid var(--border);
