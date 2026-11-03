@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.4 — 2026-11-03
+
+### Added
+
+- **Benchmark**: `npm run bench` measures a `file:` lease against `git merge-tree` across 30 trials per mode. Result: 100% conflict recall, 100% false positives on clean same-file edits — the honest cost of a decidable lock. Method and threats to validity in `bench/README.md`.
+- The benchmark ships in the npm package and the README states the trade-off.
+
+### Changed
+
+- Version 0.2.4.
+
 ## 0.2.3 — 2026-11-03
 
 ### Added

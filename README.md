@@ -121,6 +121,10 @@ file:src/auth.ts     dir:src/auth     branch:main     memory:team/auth
 | Coverage | **76.4% lines / 64.8% branches** |
 | Package installs cleanly | `npm pack` + install into a clean prefix |
 
+### What a lease costs
+
+A `file:` lease is deliberately conservative. In a 30-trial replay per mode, it caught **30/30** textual conflicts — and also blocked **30/30** clean same-file edits that the merge gate would have allowed. The merge gate is the precise check; the lease is the cheap early signal. Full method and threats to validity in [bench/](bench/README.md).
+
 Everything is self-reported and reproducible; [STATUS.md](STATUS.md) lists what has **not** been evaluated (no real model loop, no multi-machine soak, no red team, no independent benchmark).
 
 ---
@@ -160,7 +164,7 @@ A shared control plane is the same row with `transport: streamable-http` and `ur
 
 ```yaml
 - name: Verify the Teamplane event log
-  uses: JustinSian/Teamplane@v0.2.3
+  uses: JustinSian/Teamplane@v0.2.4
   with:
     control-plane-url: ${{ vars.TEAMPLANE_URL }}
     token: ${{ secrets.TEAMPLANE_TOKEN }}
@@ -217,7 +221,7 @@ Related work that shaped this: Collaborative Memory (ICML'25), MERGEGYM, ScopeGa
 
 ## Status
 
-`0.2.3` — **research preview**, single node, pre-1.0. The event log is O(n) on startup; snapshots mitigate, rotation is on the roadmap. Interfaces may change before `1.0`.
+`0.2.4` — **research preview**, single node, pre-1.0. The event log is O(n) on startup; snapshots mitigate, rotation is on the roadmap. Interfaces may change before `1.0`.
 
 If you build on it, pin a commit and read [SECURITY.md](SECURITY.md) and [STATUS.md](STATUS.md).
 
