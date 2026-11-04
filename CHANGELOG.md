@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.4 — 2026-11-04
+
+### Added
+
+- Clicking a task row opens an inline detail panel: id, branch/base, requester/assignee, repository, worktree, verify commands, and the bound mandate's paths, branches, memory and expiry.
+- Expanding a Live Event now shows a one-line human explanation above the raw JSON, e.g. "alice locked file:src/auth.ts" or "bob was denied fs.write on file:src/auth.ts".
+
 ## 0.6.3 — 2026-11-03
 
 ### Added

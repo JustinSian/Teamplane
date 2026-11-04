@@ -31,6 +31,37 @@ function eventLabel(type) {
   return EVENT_LABELS[type] ?? type
 }
 
+function explainEvent(event) {
+  const actor = short(event.actor) || 'system'
+  const d = event.data ?? {}
+  const s = (value) => (value === undefined || value === null ? '' : String(value))
+  switch (event.type) {
+    case 'approval.requested': return `${actor} asked for ${s(d.action)} on ${s(d.resource)}`
+    case 'approval.resolved': return `${actor} ${s(d.status)} the approval`
+    case 'approval.consumed': return `${actor} used the approval`
+    case 'lease.acquired': return `${actor} locked ${s(d.key)}`
+    case 'lease.renewed': return `${actor} renewed the lock on ${s(d.id)}`
+    case 'lease.released': return `${actor} released ${s(d.key)}`
+    case 'memory.written': return `${actor} wrote memory "${s(d.topic)}"`
+    case 'memory.conflict': return `memory conflict on "${s(d.topic)}"`
+    case 'decision.denied': return `${actor} was denied ${s(d.action)} on ${s(d.resource)}`
+    case 'write.authorized': return `${actor} was allowed to write ${s(d.resource)}`
+    case 'task.created': return `${actor} created task "${s(d.title)}"`
+    case 'task.started': return `${actor} started a worktree`
+    case 'task.status': return `${actor} set task status to ${s(d.status)}`
+    case 'task.launched': return `${actor} launched ${s(d.command)}`
+    case 'mandate.issued': return `${actor} issued a mandate for task ${s(d.task)}`
+    case 'mandate.revoked': return `${actor} revoked mandate ${s(d.id)}`
+    case 'submit.merged': return `${actor} merged "${s(d.branch)}"`
+    case 'submit.verified': return `verification passed for ${s(d.taskId)}`
+    case 'submit.rejected': return `submit rejected for ${s(d.taskId)}`
+    case 'policy.updated': return `${actor} updated the policy`
+    case 'principal.created': return `${actor} created principal "${s(d.display)}"`
+    case 'principal.disabled': return `${actor} disabled principal ${s(d.principalId)}`
+    default: return `${actor} recorded ${eventLabel(event.type)}`
+  }
+}
+
 const state = {
   token: localStorage.getItem('teamplane.token') ?? '',
   events: [],
@@ -43,6 +74,7 @@ const state = {
   mandates: [],
   tasks: [],
   expandedEvent: null,
+  selectedTask: null,
 }
 
 async function api(path, options = {}) {
@@ -286,8 +318,11 @@ function renderTasks(tasks) {
   overview.replaceChildren()
   const tableBody = $('tasks-table').querySelector('tbody')
   tableBody.replaceChildren()
+  const detail = $('task-detail')
   if (tasks.length === 0) {
     overview.append(element('p', 'muted', 'No tasks yet.'))
+    detail.hidden = true
+    detail.replaceChildren()
     return
   }
   for (const task of tasks) {
@@ -299,17 +334,74 @@ function renderTasks(tasks) {
     overview.append(row)
 
     const tr = document.createElement('tr')
+    if (task.id === state.selectedTask) tr.className = 'selected'
+    tr.title = 'Click for details'
     const idCell = element('td', 'mono', short(task.id))
     const titleCell = element('td', '', task.title)
     const statusCell = element('td')
     statusCell.append(badge(task.status, task.status === 'merged' ? 'ok' : task.status === 'active' ? 'warn' : ''))
     const mandateCell = element('td', 'mono', short(task.mandateId ?? '—'))
-    const worktreeName = task.worktree ? String(task.worktree).split(/[\\/]/).filter(Boolean).pop() : null
+    const mandate = task.mandateId ? state.mandates.find((item) => item.id === task.mandateId) : null
+    const scope = mandate?.claims?.scope?.paths?.join(', ') ?? '—'
+    const scopeCell = element('td', 'mono', scope)
+    if (mandate?.claims?.scope?.branches?.length) scopeCell.title = `branches: ${mandate.claims.scope.branches.join(', ')}`
+    const worktreeName = task.worktree ? String(task.worktree).split(/[\/]/).filter(Boolean).pop() : null
     const worktreeCell = element('td', 'mono', worktreeName ?? '—')
     if (task.worktree) worktreeCell.title = String(task.worktree)
-    tr.append(idCell, titleCell, statusCell, mandateCell, worktreeCell)
+    tr.append(idCell, titleCell, statusCell, mandateCell, scopeCell, worktreeCell)
+    tr.addEventListener('click', () => {
+      state.selectedTask = state.selectedTask === task.id ? null : task.id
+      renderTasks(state.tasks)
+    })
     tableBody.append(tr)
   }
+  renderTaskDetail()
+}
+
+function kv(label, value) {
+  const wrap = element('div', 'kv')
+  wrap.append(element('span', 'k', label))
+  const v = element('span', 'v')
+  v.textContent = value === undefined || value === null || value === '' ? '—' : String(value)
+  wrap.append(v)
+  return wrap
+}
+
+function renderTaskDetail() {
+  const box = $('task-detail')
+  const task = state.tasks.find((item) => item.id === state.selectedTask)
+  if (!task) {
+    box.hidden = true
+    box.replaceChildren()
+    return
+  }
+  box.hidden = false
+  box.replaceChildren()
+  box.append(element('h3', '', task.title))
+  const mandate = task.mandateId ? state.mandates.find((item) => item.id === task.mandateId) : null
+  const grid = element('div', 'kv-grid')
+  grid.append(
+    kv('Status', task.status),
+    kv('Task', task.id),
+    kv('Branch', task.branch),
+    kv('Base branch', task.baseBranch),
+    kv('Requester', task.requester),
+    kv('Assignee', task.assignee ?? '—'),
+    kv('Repository', task.repoPath),
+    kv('Worktree', task.worktree ?? '—'),
+    kv('Verify', Array.isArray(task.verify) && task.verify.length ? task.verify.join(' && ') : '—'),
+  )
+  if (mandate?.claims) {
+    grid.append(
+      kv('Mandate', mandate.id),
+      kv('Subject', mandate.claims.subject),
+      kv('Paths', mandate.claims.scope?.paths?.join(', ') ?? '—'),
+      kv('Branches', mandate.claims.scope?.branches?.join(', ') ?? '—'),
+      kv('Memory', mandate.claims.scope?.memory?.join(', ') ?? '—'),
+      kv('Expires', mandate.claims.exp ? when(mandate.claims.exp) : '—'),
+    )
+  }
+  box.append(grid)
 }
 
 function renderApprovals(approvals) {
@@ -466,9 +558,11 @@ function renderFeed() {
       state.expandedEvent = state.expandedEvent === event.id ? null : event.id
       renderFeed()
     })
+    const explain = element('p', 'feed-explain', explainEvent(event))
+    explain.hidden = state.expandedEvent !== event.id
     const detail = element('pre', 'feed-detail', JSON.stringify(event, null, 2))
     detail.hidden = state.expandedEvent !== event.id
-    feed.append(row, detail)
+    feed.append(row, explain, detail)
   }
 }
 
