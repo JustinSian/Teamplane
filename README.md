@@ -230,6 +230,7 @@ enforced.
 | [docs/threat-model.md](docs/threat-model.md) | prompt injection, confused deputy, lease bypass, inference |
 | [docs/design-notes.md](docs/design-notes.md) | prior art and what would falsify the design |
 | [docs/comparison.md](docs/comparison.md) | Dust, Tencent Team Memory, Super-agent, plain subagents |
+| [docs/supervisor-vs-teamplane.md](docs/supervisor-vs-teamplane.md) | the falsifiable, measurable comparison — blast radius, context, auditability |
 | [docs/launch.md](docs/launch.md) | the launch argument, with evidence and caveats |
 | [docs/deployment.md](docs/deployment.md) | TLS, containers, backups, permissions, incident checklist |
 | [docs/policy.md](docs/policy.md) · [docs/api.md](docs/api.md) · [docs/mcp.md](docs/mcp.md) | contracts |
