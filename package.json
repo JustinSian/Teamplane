@@ -1,6 +1,6 @@
 {
   "name": "teamplane",
-  "version": "0.6.4",
+  "version": "0.7.0",
   "description": "A deterministic control plane for multi-user agent teams: signed mandates, resource leases, permissioned memory and an auditable merge gate.",
   "keywords": [
     "agents",

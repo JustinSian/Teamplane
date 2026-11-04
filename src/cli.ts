@@ -121,7 +121,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       case 'doctor':
         return cmdDoctor(parsed)
       case 'version':
-        process.stdout.write('teamplane 0.6.4\n')
+        process.stdout.write('teamplane 0.7.0\n')
         return 0
       default:
         process.stderr.write(`Unknown command: ${command}\n\n${usage()}`)
@@ -144,7 +144,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 }
 
 function usage(): string {
-  return `teamplane 0.6.4 — a deterministic control plane for multi-user agent teams
+  return `teamplane 0.7.0 — a deterministic control plane for multi-user agent teams
 
 Usage: teamplane <command> [options]
 
@@ -510,6 +510,10 @@ async function cmdTask(parsed: Parsed, sub: string | undefined): Promise<number>
       }
     }
     const env: NodeJS.ProcessEnv = { ...process.env, TEAMPLANE_URL: client.baseUrl, TEAMPLANE_TASK: taskId }
+    // Never forward the caller's principal token: the launched agent must use its
+    // own token (from the DSH config / its environment), not the owner's.
+    delete env.TEAMPLANE_TOKEN
+    delete env.TEAMPLANE_MANDATE
     if (mandate) env.TEAMPLANE_MANDATE = mandate
     const detach = flag(parsed, 'detach')
     const child = spawn(cmd, args, { cwd: worktree, env, stdio: detach ? 'ignore' : 'inherit', detached: detach })

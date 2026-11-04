@@ -123,6 +123,10 @@ test('multi-principal lifecycle: mandates, leases, memory, approvals and submit'
     fields: { request: { force: true } },
   })
   assert.equal(service.nextStep().key, 'approve')
+  assert.throws(
+    () => service.consumeApproval(carolActor, approval.id, 'git.push', 'branch:main', bobMandate.record.claims.id, { request: { force: true } }),
+    (error) => error instanceof TeamplaneError && error.status === 403,
+  )
   service.resolveApproval(aliceActor, approval.id, true, 'ok')
   const allowed = service.authorize(bobActor, 'git.push', 'branch:main', { request: { force: true } }, bobMandate.record.claims, approval.id, true)
   assert.equal(allowed.decision, 'allow')
@@ -183,7 +187,9 @@ test('multi-principal lifecycle: mandates, leases, memory, approvals and submit'
   const staleWorktree = join(root, '.teamplane-worktrees', staleTask.id)
   git(repo, ['worktree', 'add', '-b', staleTask.branch, staleWorktree, baseCommit])
   commitFile(staleWorktree, 'src/auth.ts', stale, 'stale edit')
-  const conflicted = service.submit(aliceActor, staleTask.id, { requireLease: false }, staleMandate.record.claims)
+  service.releaseLease(bobActor, lease.id, 'released', bobMandate.record.claims)
+  service.acquireLease(aliceActor, { key: 'file:src/auth.ts', task: staleTask.id, mandate: staleMandate.record.claims })
+  const conflicted = service.submit(aliceActor, staleTask.id, {}, staleMandate.record.claims)
   assert.equal(conflicted.ok, false)
   assert.ok(conflicted.conflicts.some((path) => path.includes('src/auth.ts')), JSON.stringify(conflicted))
 

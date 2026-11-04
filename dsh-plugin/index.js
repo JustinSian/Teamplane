@@ -61,6 +61,7 @@ export function createGuard(options = {}) {
 
     if (tool === 'bash' || tool === 'pwsh' || tool === 'terminal') {
       const command = String(args?.command ?? args?.cmd ?? '')
+      if (/[<>]/.test(command)) return 'teamplane: shell redirection is denied; use a file-write tool instead.'
       const denied = denyCommands.find((pattern) => command.includes(pattern))
       if (denied) return `teamplane: command denied by guard policy (${denied}).`
       if (strict && !context) return 'teamplane: no .teamplane/context.json; refusing shell access in strict mode.'
@@ -70,7 +71,7 @@ export function createGuard(options = {}) {
     if (!WRITE_TOOLS.has(tool)) return undefined
 
     const target = extractPath(args)
-    if (!target) return undefined
+    if (!target) return 'teamplane: a write tool must name its target path; denied.'
 
     const absolute = isAbsolute(target) ? normalize(target) : normalize(join(cwd, target))
     const relativePath = toPosix(relative(cwd, absolute))

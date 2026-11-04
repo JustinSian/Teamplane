@@ -147,12 +147,11 @@ export const TOOLS: McpToolDefinition[] = [
       type: 'object',
       properties: {
         taskId: { type: 'string' },
-        verify: { type: 'array', items: { type: 'string' }, description: 'Shell commands to run before merging.' },
         merge: { type: 'boolean' },
       },
       required: ['taskId'],
     },
-    call: (api, args) => api.post(`/v1/tasks/${encodeURIComponent(str(args, 'taskId'))}/submit`, { verify: args.verify ?? [], merge: Boolean(args.merge) }),
+    call: (api, args) => api.post(`/v1/tasks/${encodeURIComponent(str(args, 'taskId'))}/submit`, { merge: Boolean(args.merge) }),
   },
   {
     name: 'tp_policy_explain',

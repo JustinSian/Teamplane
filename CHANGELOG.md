@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.7.0 — 2026-11-04
+
+Security hardening from a second review. **Breaking changes** are marked.
+
+### Fixed (P0)
+
+- `teamplane task launch` no longer forwards the caller's `TEAMPLANE_TOKEN` to the launched agent; only the task-scoped mandate from `context.json` is passed. *(breaking for launch scripts that relied on the inherited token)*
+- `submit` no longer accepts `requireLease`; lease coverage is always enforced. *(breaking)*
+- Verification commands keep a hard 300 s timeout and are documented as running repository code on the control-plane host.
+- Merge refuses to run when the control-plane repository is not checked out at `baseBranch`, so it cannot merge into a different branch.
+- `snapshot.json` is no longer written at all, so memory text can no longer be persisted in plaintext there.
+- `memory` fragments now persist `namespace`; search filters by it instead of a no-op branch.
+- `memory.conflict` results and events are ACL-filtered so a private fragment's existence and id are not leaked.
+
+### Fixed (P1)
+
+- Approvals are bound to their requester and to the request fields; another principal cannot consume someone else's approval.
+- `mandate.issued` events no longer embed the signed mandate token.
+- SSE replay applies the same redaction as live frames, so `?since=1` cannot pull private memory.
+- `task.start` rejects a mandate bound to a different task, and writes `context.json` 0600.
+- Sensitive list endpoints (`principals`, `mandates`, `tasks`, `approvals`) require owner or maintainer.
+- The DSH guard denies write tools without a path and denies shell redirection (`>`, `>>`).
+- MCP `tp_submit` no longer advertises the `verify` parameter that the server rejects.
+- SSE has a 100-connection cap; CI/security workflows are `contents: read`; the container image no longer `chown`s `/app`.
+
+### Changed
+
+- Tests 35.
+
 ## 0.6.4 — 2026-11-04
 
 ### Added

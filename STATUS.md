@@ -1,6 +1,6 @@
 # Status
 
-**Version:** 0.6.4 · **Date:** 2026-11-03 · **Maturity:** research preview
+**Version:** 0.7.0 · **Date:** 2026-11-03 · **Maturity:** research preview
 
 Teamplane is a working reference implementation of a multi-principal control plane for agent teams. It is not a finished product. This page is the honest matrix: what is shipped, what is partial, what is not built, and what has actually been measured.
 
@@ -13,9 +13,9 @@ Teamplane is a working reference implementation of a multi-principal control pla
 | Deterministic policy | **Shipped** | JSON rules, deny > ask > allow, default deny, explain |
 | Typed leases | **Shipped** | `file:`, `dir:`, `branch:`, `memory:`, fencing, TTL, renewal |
 | Curated memory | **Shipped** | ACL projection, provenance, secret rejection, conflict events |
-| Approvals | **Shipped** | role derived from the policy rule, one-shot, action-hash-bound, consumed atomically, self-approval denied |
-| Merge gate | **Shipped** | lease coverage + `git merge-tree` + task-bound verification + base-branch authorisation + optional merge |
-| Audit log | **Shipped** | append-only JSONL, SHA-256 chain, replay verification; snapshots are never trusted |
+| Approvals | **Shipped** | role derived from the policy rule, one-shot, bound to requester + fields, action-hash-bound, consumed atomically, self-approval denied |
+| Merge gate | **Shipped** | lease coverage (not skippable) + `git merge-tree` + task-bound verification + base-branch authorisation + refuses a mismatched checkout + optional merge |
+| Audit log | **Shipped** | append-only JSONL, SHA-256 chain, replay verification; snapshots are never written or trusted |
 | CLI | **Shipped** | init, principals, mandates, tasks, leases, memory, approvals, submit, audit |
 | HTTP + SSE | **Shipped** | REST + live events + static console |
 | npm package | **Not published** | install from source (`npm install && npm run build && npm link`); the MCP row uses the local `teamplane` binary |
@@ -37,7 +37,9 @@ Teamplane is a working reference implementation of a multi-principal control pla
 | Key isolation | **Shipped (default)** | signing keys live in `~/.teamplane/keys/<workspace-id>/`, not the repo; host/container isolation is still the operator's job |
 | Memory at rest | **Shipped** | text lives in `.teamplane/memory/<id>.json` (0600), sealed with AES-256-GCM from the signing key; the key holder can still decrypt |
 | Repository roots | **Shipped** | `task.create` rejects paths outside the workspace or `TEAMPLANE_REPO_ROOTS` |
-| SSE tickets | **Shipped** | `POST /v1/stream-ticket` issues a 30 s single-use ticket; `?token=` remains as legacy |
+| SSE tickets | **Shipped** | `POST /v1/stream-ticket` issues a 30 s single-use ticket; replay is redacted; `?token=` remains as legacy |
+| List authorization | **Shipped** | `principals`, `mandates`, `tasks` and `approvals` listings require owner/maintainer |
+| Verify isolation | **Partial** | verification commands are task-bound but run repository code on the control plane; sandbox them |
 
 ## Evidence
 

@@ -103,7 +103,12 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
       const replayFrom = since > 0 ? since : Math.max(0, workspace.service.state.lastSeq - 20)
       writeSse(res, 'hello', { at: nowIso(), types, since: replayFrom })
       for (const event of workspace.service.eventsSince(replayFrom, types)) {
-        writeSse(res, 'event', event, event.seq)
+        writeSse(res, 'event', redactEvent(workspace.service, actor, event), event.seq)
+      }
+      if (clients.size >= 100) {
+        res.writeHead(503, { 'Content-Type': 'text/plain' })
+        res.end('too many concurrent streams')
+        return
       }
       clients.add(client)
       const keepAlive = setInterval(() => writeSse(res, 'ping', { at: nowIso() }), 15000)
@@ -149,6 +154,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
       return
     }
     if (method === 'GET' && path === '/v1/principals') {
+      if (!ctx.actor.roles.includes('owner') && !ctx.actor.roles.includes('maintainer')) fail('forbidden', 'This listing requires the owner or maintainer role.', 403)
       sendJson(res, 200, {
         principals: [...service.state.principals.values()].map((principal) => ({
           ...service.publicPrincipal(principal),
@@ -242,6 +248,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
       return
     }
     if (method === 'GET' && path === '/v1/mandates') {
+      if (!ctx.actor.roles.includes('owner') && !ctx.actor.roles.includes('maintainer')) fail('forbidden', 'This listing requires the owner or maintainer role.', 403)
       sendJson(res, 200, {
         mandates: [...service.state.mandates.values()].map(({ token: _token, ...record }) => record),
       })
@@ -260,6 +267,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
       return
     }
     if (method === 'GET' && path === '/v1/tasks') {
+      if (!ctx.actor.roles.includes('owner') && !ctx.actor.roles.includes('maintainer')) fail('forbidden', 'This listing requires the owner or maintainer role.', 403)
       sendJson(res, 200, { tasks: [...service.state.tasks.values()] })
       return
     }
@@ -292,7 +300,6 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
         {
           verify: asStringArray(body.verify ?? []),
           merge: Boolean(body.merge),
-          requireLease: body.requireLease === undefined ? true : Boolean(body.requireLease),
           timeoutMs: asNumber(body.timeoutMs),
         },
         ctx.mandate,
@@ -354,7 +361,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
       return
     }
     if (method === 'GET' && path === '/v1/memory/conflicts') {
-      sendJson(res, 200, { conflicts: service.memoryConflicts() })
+      sendJson(res, 200, { conflicts: service.memoryConflicts(ctx.actor) })
       return
     }
 
@@ -370,6 +377,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
       return
     }
     if (method === 'GET' && path === '/v1/approvals') {
+      if (!ctx.actor.roles.includes('owner') && !ctx.actor.roles.includes('maintainer')) fail('forbidden', 'This listing requires the owner or maintainer role.', 403)
       sendJson(res, 200, { approvals: [...service.state.approvals.values()] })
       return
     }
@@ -387,6 +395,7 @@ export async function startServer(workspace: LoadedWorkspace, options: ServerOpt
         String(body.action ?? ''),
         String(body.resource ?? ''),
         ctx.mandate?.id ?? null,
+        (body.fields as Record<string, unknown> | undefined) ?? {},
       )
       sendJson(res, 200, { ok: true })
       return
@@ -538,25 +547,35 @@ function sendError(res: ServerResponse, error: unknown): void {
 }
 
 function redactEvent(
-  service: { canRead: (actor: AuthenticatedPrincipal, fragment: MemoryFragment) => boolean },
+  service: {
+    canRead: (actor: AuthenticatedPrincipal, fragment: MemoryFragment) => boolean
+    canReadFragment: (actor: AuthenticatedPrincipal, id: string) => boolean
+  },
   actor: AuthenticatedPrincipal,
   event: { type: string; data?: unknown },
 ): { type: string; data?: unknown } {
-  if (event.type !== 'memory.written') return event
-  const fragment = event.data as MemoryFragment
-  if (service.canRead(actor, fragment)) return event
-  return {
-    ...event,
-    data: {
-      id: fragment.id,
-      owner: fragment.owner,
-      kind: fragment.kind,
-      topic: fragment.topic,
-      visibility: fragment.visibility,
-      createdAt: fragment.createdAt,
-      redacted: true,
-    },
+  if (event.type === 'memory.written') {
+    const fragment = event.data as MemoryFragment
+    if (service.canRead(actor, fragment)) return event
+    return {
+      ...event,
+      data: {
+        id: fragment.id,
+        owner: fragment.owner,
+        kind: fragment.kind,
+        topic: fragment.topic,
+        visibility: fragment.visibility,
+        createdAt: fragment.createdAt,
+        redacted: true,
+      },
+    }
   }
+  if (event.type === 'memory.conflict') {
+    const conflict = event.data as { topic: string; left: string; right: string; at: string }
+    if (service.canReadFragment(actor, conflict.left) && service.canReadFragment(actor, conflict.right)) return event
+    return { ...event, data: { topic: conflict.topic, redacted: true } }
+  }
+  return event
 }
 
 function writeSse(res: ServerResponse, event: string, data: unknown, id?: number): void {

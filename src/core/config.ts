@@ -129,7 +129,6 @@ export function initProject(options: InitOptions): InitResult {
     }
     log.append('principal.created', 'system', principal as unknown as JsonValue)
     log.append('role.granted', 'system', { principalId: principal.id, role: 'owner', at: nowIso() })
-    log.writeSnapshot()
     return { root, config, principal, token, ownerRole: 'owner' }
   } finally {
     log.close()

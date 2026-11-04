@@ -20,7 +20,6 @@ import { canonicalJson, fail, hashObject, id, nowIso, parseJson, sha256 } from '
 import { defaultPolicy } from '../policy/engine.js'
 
 const GENESIS = '0'.repeat(64)
-const SNAPSHOT_EVERY = 250
 
 export function emptyState(): State {
   return {
@@ -44,9 +43,7 @@ export class EventLog extends EventEmitter {
   readonly dir: string
   readonly file: string
   readonly archiveDir: string
-  readonly snapshotFile: string
   state: State
-  private snapshotWriteInFlight = false
   private cache: EventRecord[] | null = null
   private segmentFirstSeq = 1
   private segmentCount = 0
@@ -57,7 +54,6 @@ export class EventLog extends EventEmitter {
     this.dir = dir
     this.file = join(dir, 'events.jsonl')
     this.archiveDir = join(dir, 'archive')
-    this.snapshotFile = join(dir, 'snapshot.json')
     this.maxSegmentEvents = Math.max(1, maxSegmentEvents)
     this.state = emptyState()
   }
@@ -150,26 +146,7 @@ export class EventLog extends EventEmitter {
     this.cache?.push(event)
     applyEvent(this.state, event)
     this.emit('event', event)
-    if (seq % SNAPSHOT_EVERY === 0) this.writeSnapshot()
     return event
-  }
-
-  writeSnapshot(): void {
-    if (this.snapshotWriteInFlight) return
-    this.snapshotWriteInFlight = true
-    try {
-      const snapshot: SerializedSnapshot = {
-        version: 1,
-        seq: this.state.lastSeq,
-        hash: this.state.lastHash,
-        state: serializeState(this.state),
-      }
-      const tmp = `${this.snapshotFile}.tmp`
-      writeFileSync(tmp, canonicalJson(snapshot), { mode: 0o600 })
-      renameSync(tmp, this.snapshotFile)
-    } finally {
-      this.snapshotWriteInFlight = false
-    }
   }
 
   events(): EventRecord[] {
@@ -199,9 +176,7 @@ export class EventLog extends EventEmitter {
     return { ok: true, events: events.length, brokenAt: null, reason: null }
   }
 
-  close(): void {
-    this.writeSnapshot()
-  }
+  close(): void {}
 }
 
 export function verifyEvent(event: EventRecord, previous: string, expectedSeq: number): { ok: boolean; reason: string | null } {

@@ -65,7 +65,7 @@ test('HTTP surface: auth, policy, leases, memory, audit and MCP', async (t) => {
 
   const submitWithVerify = await call(`/v1/tasks/${task.body.id}/submit`, {
     method: 'POST',
-    body: JSON.stringify({ verify: ['echo PWNED'], requireLease: false }),
+    body: JSON.stringify({ verify: ['echo PWNED'] }),
   })
   assert.equal(submitWithVerify.status, 422)
   assert.equal(submitWithVerify.body.error.code, 'verify_task_bound')

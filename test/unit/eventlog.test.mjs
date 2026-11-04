@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { EventLog } from '../../dist/store/eventlog.js'
@@ -51,11 +51,11 @@ test('tampering is detected by the hash chain', () => {
   assert.throws(() => EventLog.open(dir), /hash mismatch/)
 })
 
-test('snapshots are a cache, not the source of truth', () => {
+test('no snapshot is written; state comes from the event chain', () => {
   const { dir, log } = makeLog()
   log.append('policy.updated', 'system', defaultPolicy())
-  log.writeSnapshot()
   log.close()
+  assert.equal(existsSync(join(dir, 'snapshot.json')), false)
   const reopened = EventLog.open(dir)
   assert.equal(reopened.state.policy.version, 1)
   assert.equal(reopened.verify().ok, true)
@@ -102,17 +102,31 @@ test('a forged snapshot is ignored because startup replays the chain', () => {
   })
   log.close()
 
+  // The server no longer writes snapshots; forge one directly to prove it is ignored.
   const snapshotPath = join(dir, 'snapshot.json')
-  const snapshot = JSON.parse(readFileSync(snapshotPath, 'utf8'))
-  snapshot.state.principals.push({
-    id: 'usr_evil',
-    kind: 'user',
-    display: 'mallory',
-    tokenHash: 'forged',
-    createdAt: '2026-01-01T00:00:00.000Z',
-    disabled: false,
-  })
-  writeFileSync(snapshotPath, JSON.stringify(snapshot))
+  writeFileSync(
+    snapshotPath,
+    JSON.stringify({
+      version: 1,
+      seq: 999,
+      hash: '0'.repeat(64),
+      state: {
+        principals: [
+          { id: 'usr_evil', kind: 'user', display: 'mallory', tokenHash: 'forged', createdAt: '2026-01-01T00:00:00.000Z', disabled: false },
+        ],
+        roles: [],
+        policy: defaultPolicy(),
+        mandates: [],
+        tasks: [],
+        launches: [],
+        leases: [],
+        memory: [],
+        approvals: [],
+        fencing: [],
+        mandateWrites: [],
+      },
+    }),
+  )
 
   const reopened = EventLog.open(dir)
   assert.equal(reopened.state.principals.has('usr_real'), true)

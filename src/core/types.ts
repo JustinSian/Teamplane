@@ -157,6 +157,7 @@ export interface MemoryFragment {
   owner: string
   kind: MemoryKind
   topic: string
+  namespace: string
   text: string
   visibility: Visibility
   provenance: {

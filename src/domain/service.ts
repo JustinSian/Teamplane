@@ -80,7 +80,6 @@ export interface IssueMandateInput {
 export interface SubmitInput {
   verify?: string[]
   merge?: boolean
-  requireLease?: boolean
   timeoutMs?: number
 }
 
@@ -261,7 +260,8 @@ export class TeamplaneService {
       createdAt: issuedAt,
       revokedAt: null,
     }
-    this.log.append('mandate.issued', actor.principal.id, record as unknown as JsonValue)
+    const { token: _token, ...publicRecord } = record
+    this.log.append('mandate.issued', actor.principal.id, publicRecord as unknown as JsonValue)
     return { record, token }
   }
 
@@ -285,7 +285,8 @@ export class TeamplaneService {
       createdAt: this.now(),
       revokedAt: null,
     }
-    this.log.append('mandate.issued', actor.principal.id, record as unknown as JsonValue)
+    const { token: _token, ...publicRecord } = record
+    this.log.append('mandate.issued', actor.principal.id, publicRecord as unknown as JsonValue)
     return { record, token }
   }
 
@@ -395,6 +396,9 @@ export class TeamplaneService {
     }
 
     const record = mandateId ? this.state.mandates.get(mandateId) : undefined
+    if (record && record.claims.task !== task.id) {
+      fail('mandate_task_mismatch', `Mandate ${record.id} is for task ${record.claims.task}, not ${task.id}.`, 403)
+    }
     const context = {
       version: 1,
       server: this.options.publicUrl ?? null,
@@ -605,6 +609,7 @@ export class TeamplaneService {
       owner: actor.principal.id,
       kind: input.kind,
       topic: input.topic.trim(),
+      namespace,
       text: input.text.trim(),
       visibility,
       provenance: {
@@ -648,9 +653,7 @@ export class TeamplaneService {
     for (const fragment of this.state.memory.values()) {
       if (!this.canRead(actor, fragment)) continue
       if (options.kind && fragment.kind !== options.kind) continue
-      if (options.namespace && !withinPath(options.namespace, fragment.provenance.source)) {
-        // namespace filtering is best-effort for v0.1; provenance.source carries it
-      }
+      if (options.namespace && fragment.namespace !== options.namespace) continue
       const haystack = `${fragment.topic} ${fragment.text}`.toLowerCase()
       const hits = terms.filter((term) => haystack.includes(term))
       if (terms.length > 0 && hits.length === 0) continue
@@ -667,6 +670,11 @@ export class TeamplaneService {
     return results.slice(0, limit)
   }
 
+  canReadFragment(actor: AuthenticatedPrincipal, id: string): boolean {
+    const fragment = this.state.memory.get(id)
+    return fragment ? this.canRead(actor, fragment) : false
+  }
+
   canRead(actor: AuthenticatedPrincipal, fragment: MemoryFragment): boolean {
     if (fragment.owner === actor.principal.id) return true
     if (fragment.visibility === 'team') return true
@@ -677,11 +685,12 @@ export class TeamplaneService {
     return false
   }
 
-  memoryConflicts(): Array<{ topic: string; left: string; right: string; at: string }> {
+  memoryConflicts(actor: AuthenticatedPrincipal): Array<{ topic: string; left: string; right: string; at: string }> {
     const out: Array<{ topic: string; left: string; right: string; at: string }> = []
     for (const event of this.log.events()) {
       if (event.type !== 'memory.conflict') continue
       const data = event.data as { topic: string; left: string; right: string; at: string }
+      if (!this.canReadFragment(actor, data.left) || !this.canReadFragment(actor, data.right)) continue
       out.push(data)
     }
     return out
@@ -722,7 +731,7 @@ export class TeamplaneService {
       id: id('apr'),
       action: input.action,
       resource: input.resource,
-      actionHash: approvalHash(input.action, input.resource, input.mandateId ?? null),
+      actionHash: approvalHash(input.action, input.resource, input.mandateId ?? null, input.fields ?? {}),
       requestedBy: actor.principal.id,
       requiredRole,
       mandateId: input.mandateId ?? null,
@@ -761,13 +770,21 @@ export class TeamplaneService {
     return this.state.approvals.get(approvalId)!
   }
 
-  private approvalValid(approvalId: string | undefined, action: string, resource: string, mandateId: string | null): Approval | null {
+  private approvalValid(
+    approvalId: string | undefined,
+    actor: AuthenticatedPrincipal,
+    action: string,
+    resource: string,
+    mandateId: string | null,
+    fields: Record<string, unknown>,
+  ): Approval | null {
     if (!approvalId) return null
     const approval = this.state.approvals.get(approvalId)
     if (!approval) return null
     if (approval.status !== 'approved') return null
     if (isExpired(approval.expiresAt, this.now())) return null
-    if (approval.actionHash !== approvalHash(action, resource, mandateId)) return null
+    if (approval.requestedBy !== actor.principal.id) return null
+    if (approval.actionHash !== approvalHash(action, resource, mandateId, fields)) return null
     if ((approval.mandateId ?? null) !== mandateId) return null
     return approval
   }
@@ -778,14 +795,22 @@ export class TeamplaneService {
     action: string,
     resource: string,
     mandateId: string | null,
+    fields: Record<string, unknown>,
     consume: boolean,
   ): string {
-    if (consume) this.consumeApproval(actor, approval.id, action, resource, mandateId)
+    if (consume) this.consumeApproval(actor, approval.id, action, resource, mandateId, fields)
     return approval.resolvedBy ?? 'an approver'
   }
 
-  consumeApproval(actor: AuthenticatedPrincipal, approvalId: string, action: string, resource: string, mandateId: string | null): void {
-    const approval = this.approvalValid(approvalId, action, resource, mandateId)
+  consumeApproval(
+    actor: AuthenticatedPrincipal,
+    approvalId: string,
+    action: string,
+    resource: string,
+    mandateId: string | null,
+    fields: Record<string, unknown> = {},
+  ): void {
+    const approval = this.approvalValid(approvalId, actor, action, resource, mandateId, fields)
     if (!approval) fail('approval_invalid', 'Approval is missing, expired or bound to a different action.', 403)
     this.log.append('approval.consumed', actor.principal.id, { id: approvalId, at: this.now() })
   }
@@ -832,17 +857,17 @@ export class TeamplaneService {
         if (limit) return { ...result, decision: 'deny', reason: limit, mandateOk: true }
       }
       if (obligations.requireApproval) {
-        const approval = this.approvalValid(approvalId, action, resource, mandate?.id ?? null)
+        const approval = this.approvalValid(approvalId, actor, action, resource, mandate?.id ?? null, fields)
         if (!approval) {
           return { ...result, decision: 'ask', reason: 'This action requires a human approval (approvalId).' }
         }
-        const approver = this.useApproval(actor, approval, action, resource, mandate?.id ?? null, consumeApproval)
+        const approver = this.useApproval(actor, approval, action, resource, mandate?.id ?? null, fields, consumeApproval)
         result = { ...result, reason: `Approved by ${approver}.` }
       }
     }
 
     if (decision.decision === 'ask') {
-      const approval = this.approvalValid(approvalId, action, resource, mandate?.id ?? null)
+      const approval = this.approvalValid(approvalId, actor, action, resource, mandate?.id ?? null, fields)
       if (approval) {
         if (obligations.requireMandate && !mandate) {
           return { ...result, decision: 'deny', reason: 'This action requires a signed mandate (X-Teamplane-Mandate).', mandateOk: false }
@@ -855,7 +880,7 @@ export class TeamplaneService {
           const limit = this.writeLimitReason(mandate)
           if (limit) return { ...result, decision: 'deny', reason: limit, mandateOk: true }
         }
-        const approver = this.useApproval(actor, approval, action, resource, mandate?.id ?? null, consumeApproval)
+        const approver = this.useApproval(actor, approval, action, resource, mandate?.id ?? null, fields, consumeApproval)
         result = { ...result, decision: 'allow', reason: `Approved by ${approver}.` }
       }
     }
@@ -934,15 +959,12 @@ export class TeamplaneService {
     if (task.status === 'merged') fail('task_already_merged', `Task ${taskId} is already merged.`, 409)
 
     const changed = this.changedFiles(task)
-    const requireLease = input.requireLease ?? true
     const uncovered: string[] = []
-    if (requireLease) {
-      for (const file of changed) {
-        const covered = activeLeases(this.state, this.now()).some(
-          (lease) => lease.task === task.id && (lease.key === `file:${file}` || (lease.key.startsWith('dir:') && withinPath(lease.key.slice(4), file))),
-        )
-        if (!covered) uncovered.push(file)
-      }
+    for (const file of changed) {
+      const covered = activeLeases(this.state, this.now()).some(
+        (lease) => lease.task === task.id && (lease.key === `file:${file}` || (lease.key.startsWith('dir:') && withinPath(lease.key.slice(4), file))),
+      )
+      if (!covered) uncovered.push(file)
     }
     if (uncovered.length > 0) {
       const result: SubmitResult = {
@@ -980,11 +1002,12 @@ export class TeamplaneService {
     const verify = task.verify ?? []
     const verifyResults: SubmitResult['verify'] = []
     for (const command of verify) {
+      const timeoutMs = typeof input.timeoutMs === 'number' && input.timeoutMs > 0 ? Math.min(input.timeoutMs, 300_000) : 120_000
       const run = spawnSync(command, {
         cwd: task.worktree ?? task.repoPath,
         shell: true,
         encoding: 'utf8',
-        timeout: input.timeoutMs ?? 120_000,
+        timeout: timeoutMs,
       })
       verifyResults.push({
         command,
@@ -1019,6 +1042,11 @@ export class TeamplaneService {
     let merged = false
     if (input.merge) {
       this.authorizeOrThrow(actor, 'git.push', `branch:${task.baseBranch}`, { request: { force: false } }, mandate)
+      const base = this.git(task.repoPath, ['rev-parse', '--verify', '--quiet', task.baseBranch])
+      const head = this.git(task.repoPath, ['rev-parse', 'HEAD'])
+      if (base.code !== 0 || head.code !== 0 || base.stdout.trim() !== head.stdout.trim()) {
+        fail('base_branch_not_checked_out', `The control-plane repository is not checked out at ${task.baseBranch}; refuse to merge into a different branch.`, 409)
+      }
       const merge = this.git(task.repoPath, ['merge', '--no-ff', task.branch, '-m', `teamplane: merge ${task.id}`])
       if (merge.code !== 0) {
         const result: SubmitResult = {
@@ -1097,8 +1125,8 @@ export class TeamplaneService {
   }
 }
 
-export function approvalHash(action: string, resource: string, mandateId: string | null): string {
-  return hashObject({ action, resource, mandateId })
+export function approvalHash(action: string, resource: string, mandateId: string | null, fields?: Record<string, unknown>): string {
+  return hashObject({ action, resource, mandateId, fields: fields ?? {} })
 }
 
 export function leasesConflict(lease: Lease, key: string, mode: LeaseMode): boolean {

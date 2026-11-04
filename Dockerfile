@@ -19,7 +19,7 @@ COPY web ./web
 COPY LICENSE ./LICENSE
 RUN apk add --no-cache git \
     && mkdir -p /data/keys /workspace/repo \
-    && chown -R node:node /data /workspace /app
+    && chown -R node:node /data /workspace
 USER node
 WORKDIR /workspace/repo
 EXPOSE 7317
