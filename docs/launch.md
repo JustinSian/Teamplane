@@ -27,7 +27,7 @@ No model is in the decision path. The agents keep the interesting job — planni
 
 ## What I measured
 
-- 36 tests, including the guard running inside the **real** `@deepseek-ai/dsh-tools` `ToolRuntime` pipeline.
+- 38 tests, including the guard running inside the **real** `@deepseek-ai/dsh-tools` `ToolRuntime` pipeline.
 - A 16-step executable demo: 1 winner per contended lease, mandate denials, one-shot approvals, merge gate.
 - 50 concurrent requests for the same lease: **1 × 201, 49 × 409**. 50 distinct keys: **50 × 201**.
 - 0.59 ms per authorization decision on loopback — not a capacity claim.

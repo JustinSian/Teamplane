@@ -128,6 +128,22 @@ A shared Windows host with multiple interactive users needs this; a single-user
 laptop is lower risk. `teamplane doctor` reports the key location and workspace
 state, but does not change ACLs.
 
+## Audit checkpoint
+
+`audit verify` proves the chain is internally consistent, but it is computed on
+the machine being audited. Sign the head and keep the signature elsewhere:
+
+```bash
+teamplane audit sign --out checkpoint.json   # sign seq + hash with the workspace key
+teamplane audit verify --checkpoint checkpoint.json
+```
+
+The signature uses the Ed25519 key in `~/.teamplane/keys/<id>/`, which is
+outside the workspace. Copy `checkpoint.json` to a place the event-log writer
+does not control (a separate repo, object store, or a teammate's machine). If
+an attacker rewrites the chain, they cannot produce a new valid checkpoint
+without that key.
+
 ## Verification sandbox
 
 `submit` runs the task's verification commands on the control-plane host, and

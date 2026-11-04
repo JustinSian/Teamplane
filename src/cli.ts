@@ -1,13 +1,14 @@
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parseArgs } from 'node:util'
 import type { Policy, Role } from './core/types.js'
 import { findRoot, initProject, loadWorkspace, readConfig, readJoinConfig, readPolicyFile, writeJoinConfig, writePolicyFile } from './core/config.js'
 import { ApiError, ApiClient, requireToken } from './client/api.js'
-import { TeamplaneError, parseDuration } from './core/util.js'
+import { TeamplaneError, canonicalJson, parseDuration, parseJson } from './core/util.js'
 import { validatePolicy } from './policy/engine.js'
 import { verifyMandate } from './domain/mandate.js'
+import { signCheckpoint, verifyCheckpoint, type AuditCheckpoint } from './domain/checkpoint.js'
 import { runMcpStdio } from './mcp/stdio.js'
 import { runDemo } from './demo/run.js'
 import { seedPlayground } from './demo/seed.js'
@@ -53,6 +54,8 @@ const OPTIONS = {
   force: { type: 'boolean' },
   quiet: { type: 'boolean' },
   ci: { type: 'boolean' },
+  out: { type: 'string' },
+  checkpoint: { type: 'string' },
   keep: { type: 'boolean' },
   open: { type: 'boolean' },
   detach: { type: 'boolean' },
@@ -121,7 +124,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
       case 'doctor':
         return cmdDoctor(parsed)
       case 'version':
-        process.stdout.write('teamplane 0.7.1\n')
+        process.stdout.write('teamplane 0.7.2\n')
         return 0
       default:
         process.stderr.write(`Unknown command: ${command}\n\n${usage()}`)
@@ -144,7 +147,7 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
 }
 
 function usage(): string {
-  return `teamplane 0.7.1 — a deterministic control plane for multi-user agent teams
+  return `teamplane 0.7.2 — a deterministic control plane for multi-user agent teams
 
 Usage: teamplane <command> [options]
 
@@ -174,7 +177,7 @@ Usage: teamplane <command> [options]
   approve <approvalId> [--reason ...] | reject <approvalId>
   submit <taskId> [--merge]
   events tail [--since 0] [--types lease.,approval.]
-  audit verify | audit export
+  audit verify [--checkpoint <file>] | audit sign [--out <file>] | audit export
   dsh print-config
   mcp
   playground [--port 7317] [--open] [--keep]
@@ -693,18 +696,50 @@ async function cmdEvents(parsed: Parsed, sub: string | undefined): Promise<numbe
 
 function cmdAudit(parsed: Parsed, sub: string | undefined): number {
   const workspace = loadWorkspace()
+  const NL = String.fromCharCode(10)
   if (sub === 'export') {
-    for (const event of workspace.log.events()) process.stdout.write(`${JSON.stringify(event)}\n`)
+    for (const event of workspace.log.events()) process.stdout.write(JSON.stringify(event) + NL)
     workspace.log.close()
     return 0
   }
   const result = workspace.service.audit()
-  workspace.log.close()
   if (!result.ok) {
-    process.stderr.write(`audit FAILED at seq ${result.brokenAt}: ${result.reason}\n`)
+    workspace.log.close()
+    process.stderr.write('audit FAILED at seq ' + result.brokenAt + ': ' + result.reason + NL)
     return 1
   }
-  process.stdout.write(`audit ok: ${result.events} events, hash chain intact\n`)
+  if (sub === 'sign') {
+    const checkpoint = signCheckpoint(result.events, workspace.log.state.lastHash, workspace.keys)
+    const out = value(parsed, 'out') ?? '.teamplane/checkpoint.json'
+    writeFileSync(out, canonicalJson(checkpoint) + NL)
+    workspace.log.close()
+    process.stdout.write('checkpoint written to ' + out + ': seq ' + checkpoint.seq + ', hash ' + checkpoint.hash + NL)
+    return 0
+  }
+  const checkpointPath = value(parsed, 'checkpoint')
+  if (checkpointPath) {
+    if (!existsSync(checkpointPath)) {
+      workspace.log.close()
+      process.stderr.write('checkpoint ' + checkpointPath + ' not found' + NL)
+      return 2
+    }
+    const checkpoint = parseJson<AuditCheckpoint>(readFileSync(checkpointPath, 'utf8'), 'checkpoint')
+    const sigOk = verifyCheckpoint(checkpoint, workspace.keys.publicKeyPem)
+    const headOk = checkpoint.seq === result.events && checkpoint.hash === workspace.log.state.lastHash
+    workspace.log.close()
+    if (!sigOk) {
+      process.stderr.write('checkpoint FAILED: signature does not verify' + NL)
+      return 1
+    }
+    if (!headOk) {
+      process.stderr.write('checkpoint FAILED: head mismatch (checkpoint seq ' + checkpoint.seq + ', log ' + result.events + ')' + NL)
+      return 1
+    }
+    process.stdout.write('audit ok: ' + result.events + ' events, checkpoint signature valid' + NL)
+    return 0
+  }
+  workspace.log.close()
+  process.stdout.write('audit ok: ' + result.events + ' events, hash chain intact' + NL)
   return 0
 }
 

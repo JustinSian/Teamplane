@@ -43,7 +43,7 @@ What it does **not** enforce:
 - Raw file writes inside a worktree, unless the host guard is installed.
 - Shell side effects inside an allowed command. **Verification commands run repository code on the control-plane host** (e.g. `npm test` executes the task's `package.json` scripts); run the control plane in a sandbox and treat `verify` as untrusted.
 - Policy conditions on `request.*` are caller-supplied (`force`, `action`, `resource`); they are honest only when a trusted server operation fills them in.
-- The audit chain is tamper-evident, not tamper-proof: a writer who can rebuild the whole chain and its checkpoint can forge history. Publish the chain head to an external checkpoint.
+- The audit chain is tamper-evident, not tamper-proof against a writer who also holds the signing key. `teamplane audit sign` signs the chain head with the key that lives outside the workspace; `teamplane audit verify --checkpoint <file>` verifies it. Publish that checkpoint somewhere the writer does not control.
 - Semantic correctness of a merge.
 - Confidentiality against a compromised host or signing key.
 

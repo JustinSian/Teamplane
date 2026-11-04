@@ -1,6 +1,6 @@
 # Status
 
-**Version:** 0.7.1 · **Date:** 2026-11-03 · **Maturity:** research preview
+**Version:** 0.7.2 · **Date:** 2026-11-03 · **Maturity:** research preview
 
 Teamplane is a working reference implementation of a multi-principal control plane for agent teams. It is not a finished product. This page is the honest matrix: what is shipped, what is partial, what is not built, and what has actually been measured.
 
@@ -15,7 +15,7 @@ Teamplane is a working reference implementation of a multi-principal control pla
 | Curated memory | **Shipped** | ACL projection, provenance, secret rejection, conflict events |
 | Approvals | **Shipped** | role derived from the policy rule, one-shot, bound to requester + fields, action-hash-bound, consumed atomically, self-approval denied |
 | Merge gate | **Shipped** | lease coverage (not skippable) + `git merge-tree` + task-bound verification + base-branch authorisation + refuses a mismatched checkout + optional merge |
-| Audit log | **Shipped** | append-only JSONL, SHA-256 chain, replay verification; snapshots are never written or trusted |
+| Audit log | **Shipped** | append-only JSONL, SHA-256 chain, replay verification; signed checkpoint via `audit sign` / `audit verify --checkpoint` |
 | CLI | **Shipped** | init, principals, mandates, tasks, leases, memory, approvals, submit, audit |
 | HTTP + SSE | **Shipped** | REST + live events + static console |
 | npm package | **Not published** | install from source (`npm install && npm run build && npm link`); the MCP row uses the local `teamplane` binary |
@@ -45,7 +45,7 @@ Teamplane is a working reference implementation of a multi-principal control pla
 
 | Claim | Evidence |
 |---|---|
-| Coordination invariants hold | `npm test` — **36/36** passing |
+| Coordination invariants hold | `npm test` — **38/38** passing |
 | End-to-end behaviour | `npm run demo` — **16/16** steps, 2.7 s, report in `demo/out/` |
 | MCP works on both transports | `npm run mcp:smoke` — 10 tools, stdio + HTTP |
 | Package is installable | `npm pack` + install into a clean prefix; CLI runs |

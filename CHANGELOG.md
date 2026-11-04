@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.2 — 2026-11-04
+
+### Added
+
+- `teamplane audit sign [--out <file>]` signs the chain head (seq + hash) with the workspace Ed25519 key, which lives outside `.teamplane/`.
+- `teamplane audit verify --checkpoint <file>` verifies the signature and that the checkpoint matches the recomputed head.
+- Tests 36 → 38.
+
 ## 0.7.1 — 2026-11-04
 
 ### Added
