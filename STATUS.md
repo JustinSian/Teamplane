@@ -1,6 +1,6 @@
 # Status
 
-**Version:** 0.7.0 · **Date:** 2026-11-03 · **Maturity:** research preview
+**Version:** 0.7.1 · **Date:** 2026-11-03 · **Maturity:** research preview
 
 Teamplane is a working reference implementation of a multi-principal control plane for agent teams. It is not a finished product. This page is the honest matrix: what is shipped, what is partial, what is not built, and what has actually been measured.
 
@@ -39,13 +39,13 @@ Teamplane is a working reference implementation of a multi-principal control pla
 | Repository roots | **Shipped** | `task.create` rejects paths outside the workspace or `TEAMPLANE_REPO_ROOTS` |
 | SSE tickets | **Shipped** | `POST /v1/stream-ticket` issues a 30 s single-use ticket; replay is redacted; `?token=` remains as legacy |
 | List authorization | **Shipped** | `principals`, `mandates`, `tasks` and `approvals` listings require owner/maintainer |
-| Verify isolation | **Partial** | verification commands are task-bound but run repository code on the control plane; sandbox them |
+| Verify isolation | **Configurable** | task-bound; sandbox via `TEAMPLANE_VERIFY_RUNNER`, or refuse server-side verification with `TEAMPLANE_VERIFY_REQUIRE_RUNNER=1` |
 
 ## Evidence
 
 | Claim | Evidence |
 |---|---|
-| Coordination invariants hold | `npm test` — **35/35** passing |
+| Coordination invariants hold | `npm test` — **36/36** passing |
 | End-to-end behaviour | `npm run demo` — **16/16** steps, 2.7 s, report in `demo/out/` |
 | MCP works on both transports | `npm run mcp:smoke` — 10 tools, stdio + HTTP |
 | Package is installable | `npm pack` + install into a clean prefix; CLI runs |

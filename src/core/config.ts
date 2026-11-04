@@ -156,6 +156,8 @@ export function loadWorkspace(rootOrCwd = process.cwd(), publicUrl?: string): Lo
     repoPath: config.repoPath ?? root,
     publicUrl: publicUrl ?? `http://${config.host}:${config.port}`,
     allowedRepoRoots,
+    verifyRunner: process.env.TEAMPLANE_VERIFY_RUNNER || undefined,
+    verifyRequireRunner: process.env.TEAMPLANE_VERIFY_REQUIRE_RUNNER === '1',
   })
   return { root, config, keys, log, service }
 }

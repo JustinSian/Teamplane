@@ -192,7 +192,7 @@ Agent 会拿到十个工具：`tp_whoami`、`tp_task_start`、`tp_lease_acquire`
 
 | 声明 | 证据 |
 |---|---|
-| 协调不变量成立 | `npm test` — **35/35** |
+| 协调不变量成立 | `npm test` — **36/36** |
 | 端到端行为 | `npm run demo` — **16/16** 步，2.7 秒 |
 | MCP 双传输 | `npm run mcp:smoke` — 10 个工具 |
 | 同一租约只有一个赢家 | 50 并发：**1 × 201，49 × 409** |

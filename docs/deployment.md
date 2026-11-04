@@ -128,6 +128,20 @@ A shared Windows host with multiple interactive users needs this; a single-user
 laptop is lower risk. `teamplane doctor` reports the key location and workspace
 state, but does not change ACLs.
 
+## Verification sandbox
+
+`submit` runs the task's verification commands on the control-plane host, and
+`npm test` executes the task's `package.json` scripts — code an agent controls.
+Two environment variables give you an isolation boundary:
+
+| Variable | Effect |
+|---|---|
+| `TEAMPLANE_VERIFY_RUNNER` | A command template run with `shell: true`; `{worktree}` and `{command}` are substituted. Example: `docker run --rm -v "{worktree}:/work" -w /work --rm node:22 sh -c "{command}"` |
+| `TEAMPLANE_VERIFY_REQUIRE_RUNNER=1` | Refuse to run verification at all when no runner is configured (`503 verify_runner_required`) |
+
+Use `TEAMPLANE_VERIFY_REQUIRE_RUNNER=1` on any host you do not fully trust, and
+point the runner at an isolated container.
+
 ## What is still not enforced
 
 - **Raw writes.** An agent with a shell can write into the worktree without

@@ -54,6 +54,7 @@ See [docs/threat-model.md](docs/threat-model.md) for T1–T13 and [docs/deployme
 - Bind the server to `127.0.0.1` unless TLS terminates in front of it.
 - Keep `.teamplane/` out of version control. Signing keys live outside the workspace (`~/.teamplane/keys/<id>/`) and must be `0600`; on Windows use `icacls`, not `mode`.
 - Short TTLs: leases 15–60 min, mandates 1–8 h, approvals 30 min.
+- Run verification in a sandbox: set `TEAMPLANE_VERIFY_RUNNER` to a command that executes `{command}` inside a container/VM, and `TEAMPLANE_VERIFY_REQUIRE_RUNNER=1` to refuse verification when no runner is configured.
 - One token per principal; create a new principal and disable the old one to rotate.
 - Install `dsh-teamplane-guard` (or an equivalent host guard) for every writing runtime.
 - Anchor the output of `teamplane audit verify` in CI or a signed release.

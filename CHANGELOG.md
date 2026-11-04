@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.1 — 2026-11-04
+
+### Added
+
+- `TEAMPLANE_VERIFY_RUNNER` runs each verification command through an operator-supplied sandbox template (`{worktree}`, `{command}`).
+- `TEAMPLANE_VERIFY_REQUIRE_RUNNER=1` refuses server-side verification entirely when no runner is configured, so a host you do not trust cannot be forced to execute repository code.
+- Tests 35 → 36.
+
 ## 0.7.0 — 2026-11-04
 
 Security hardening from a second review. **Breaking changes** are marked.

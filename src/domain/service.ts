@@ -57,6 +57,8 @@ export interface ServiceOptions {
   repoPath?: string
   publicUrl?: string
   allowedRepoRoots?: string[]
+  verifyRunner?: string
+  verifyRequireRunner?: boolean
   now?: () => string
 }
 
@@ -1000,11 +1002,18 @@ export class TeamplaneService {
       fail('verify_task_bound', 'Verification commands are bound to the task; set them at task creation or with task.verify.', 422)
     }
     const verify = task.verify ?? []
+    if (verify.length > 0 && this.options.verifyRequireRunner && !this.options.verifyRunner) {
+      fail('verify_runner_required', 'Server-side verification is disabled until TEAMPLANE_VERIFY_RUNNER is configured. Run verification in a sandbox.', 503)
+    }
+    const worktreePath = task.worktree ?? task.repoPath
     const verifyResults: SubmitResult['verify'] = []
     for (const command of verify) {
       const timeoutMs = typeof input.timeoutMs === 'number' && input.timeoutMs > 0 ? Math.min(input.timeoutMs, 300_000) : 120_000
-      const run = spawnSync(command, {
-        cwd: task.worktree ?? task.repoPath,
+      const runCommand = this.options.verifyRunner
+        ? this.options.verifyRunner.replaceAll('{worktree}', worktreePath).replaceAll('{command}', command)
+        : command
+      const run = spawnSync(runCommand, {
+        cwd: worktreePath,
         shell: true,
         encoding: 'utf8',
         timeout: timeoutMs,
